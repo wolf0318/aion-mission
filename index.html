@@ -401,6 +401,7 @@ async function startApp(changed){
     ref("settings").on("value",snap=>{ const v=snap.val()||{}; settings={ice:v.ice!==false,solo:v.solo!==false,team:v.team!==false,practice:v.practice!==false}; applyLocks(); });
     ref("notice").on("value",snap=>{ const v=snap.val(); if(v&&v.text&&v.t&&Date.now()-v.t<10*60*1000&&String(v.t)!==ls.get("aion_seen_notice")){ $("#noticeTxt").textContent=v.text; $("#notice").hidden=false; snd.ding(); $("#notice").dataset.t=v.t; } else if(!v||!v.text){ $("#notice").hidden=true; } });
     ref("curl").on("value",snap=>{ curlData=snap.val()||{}; if(!curl.moving){ renderBoard(); renderMyThrows(); paintCurl(); } });
+    ref("snapReq").on("value",snap=>{ const v=snap.val(); if(snapFirst){ snapFirst=false; lastSnapReq=v; return; } if(v&&v!==lastSnapReq){ lastSnapReq=v; if(renderer&&activeScene) snapWanted=true; else takeSnap(); } });
     ref("students/"+sid()+"/ice").once("value",snap=>{ const v=snap.val(); if(v){ Object.assign(cleared,v); renderMTabs(); } });
   }
   if(changed){ curlData=curlData||{}; renderMyThrows(); renderBoard(); }
@@ -465,6 +466,7 @@ function initThree(){
     tickers.forEach(f=>f(dt));
     controls.update();
     if(activeScene) renderer.render(activeScene,camera);
+    if(snapWanted) takeSnap();
   });
 }
 function resize(){
@@ -560,6 +562,35 @@ function makeRobot(){
   return r;
 }
 function ledBlink(robot,on){ robot.userData.leds.forEach((m,i)=>{ m.emissiveIntensity=on?(.25+.9*((Math.sin(performance.now()/120+i*2)+1)/2)):.25; }); }
+
+/* ───── 선생님 화면에 내 화면 보내기 ───── */
+let snapWanted=false, snapFirst=true, lastSnapReq=null, liveLast="";
+function liveText(){
+  const tabName={ice:"아이스크림 미션",curl:"컬링 시합",parts:"아이온 살펴보기"}[curTab]||String(curTab);
+  let a=tabName, b="", seq=[];
+  try{
+    if(curTab==="ice"){ const m=MISSIONS[st.m]; a+=" / "+(m?m.tab:""); b=($("#status").textContent||"").trim(); seq=st.seq.map(x=>T[x]?T[x].name:String(x)); }
+    else if(curTab==="curl"){ a+=" / "+({practice:"연습",solo:"개인전",team:"단체전"}[curl.mode]||"경기 고르는 중"); b=($("#cStatus").textContent||"").trim(); }
+    else { const n=parts.q.length||6; a+=" / "+(parts.mode==="quiz"?"찾기 퀴즈 "+Math.min(parts.qi+1,n)+"/"+n:"살펴보기")+" / 하드웨어 퀴즈 "+Math.min(hs.i,HS.length)+"/"+HS.length; const pb=document.querySelector("#pInfo b"); b=pb?pb.textContent.trim():""; }
+  }catch(e){}
+  return {a:a,b:b.slice(0,90),seq:seq};
+}
+setInterval(()=>{ if(!FB.ok||!me.team||!started) return; const L=liveText(); const j=JSON.stringify(L); if(j===liveLast) return; liveLast=j; fbSet("live/"+sid(),{a:L.a,b:L.b,seq:L.seq,team:me.team,num:me.num,t:firebase.database.ServerValue.TIMESTAMP}); },2000);
+function takeSnap(){
+  snapWanted=false;
+  if(!FB.ok||!me.team) return;
+  try{
+    const W=400, src=(renderer&&webgl)?renderer.domElement:null;
+    const h3=src&&src.width?Math.round(W*src.height/src.width):0;
+    const c=document.createElement("canvas"); c.width=W; c.height=h3+62; const g=c.getContext("2d");
+    g.fillStyle="#ffffff"; g.fillRect(0,0,W,c.height);
+    const L=liveText();
+    g.fillStyle="#1c2230"; g.font="bold 15px 'Malgun Gothic','Noto Sans KR',sans-serif"; g.fillText(L.a,8,22,W-16);
+    g.fillStyle="#3b4354"; g.font="14px 'Malgun Gothic','Noto Sans KR',sans-serif"; g.fillText(L.b+(L.seq.length?"  [카드: "+L.seq.join(", ")+"]":""),8,46,W-16);
+    if(src) g.drawImage(src,0,62,W,h3);
+    fbSet("snap/"+sid(),{img:c.toDataURL("image/jpeg",.62),team:me.team,num:me.num,t:firebase.database.ServerValue.TIMESTAMP});
+  }catch(e){}
+}
 
 /* ═════════════ 아이온 살펴보기 ═════════════ */
 const PARTS={
