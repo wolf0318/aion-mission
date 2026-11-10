@@ -70,6 +70,18 @@ td.n{text-align:right;font-weight:700;font-size:18px}
 .ms span{font-size:11px;border-radius:6px;padding:0 5px;background:#eee;color:#888}
 .ms span.ok{background:#d9efe0;color:var(--ok);font-weight:700}
 .empty{color:var(--muted);font-size:14px}
+.top .btn.armed{background:#7a1010;border-color:#7a1010;color:#fff}
+.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.shot{border:1px solid var(--line);border-radius:12px;background:#faf8f2;padding:6px 8px 8px;min-width:0}
+.shot .hd{display:flex;justify-content:space-between;align-items:center;gap:6px;font-family:var(--f-display);font-size:17px}
+.shot .hd small{font-family:var(--f-body);font-size:11px;color:var(--muted)}
+.shot img{width:100%;display:block;border-radius:8px;background:#e9e5d8;cursor:zoom-in;margin-top:4px}
+.shot .noimg{display:grid;place-items:center;height:110px;border-radius:8px;background:#eee;color:#888;font-size:13px;margin-top:4px;text-align:center;padding:6px}
+.shot .lt{font-size:12px;color:var(--muted);margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.shot.off{opacity:.55}
+.zoom{position:fixed;inset:0;background:rgba(20,24,32,.6);display:grid;place-items:center;z-index:60;padding:16px;cursor:zoom-out}
+.zoom img{max-width:min(96vw,1000px);max-height:90vh;border-radius:12px;background:#fff}
+.stu .lv{font-size:12px;margin-top:3px;color:var(--ink);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 /* 큰 화면 */
 body.big .hide-big{display:none!important}
 body.big .grid{grid-template-columns:1fr 1fr}
@@ -97,6 +109,8 @@ body.big .box h2{font-size:30px}
     <span class="pill">방: <b id="room"></b></span>
     <span class="sp"></span>
     <button class="btn ghost" id="bigBtn" type="button">큰 화면(순위만)</button>
+    <button class="btn ghost hide-big" id="rstCurl" type="button">컬링 기록 지우기</button>
+    <button class="btn danger hide-big" id="rstAll" type="button">전체 초기화</button>
   </header>
 
   <div class="grid">
@@ -126,6 +140,13 @@ body.big .box h2{font-size:30px}
     </section>
 
     <section class="box hide-big" style="grid-column:1/-1">
+      <h2>학생 화면 보기</h2>
+      <p class="sub">[지금 화면 보기]를 누르면 접속한 학생의 3D 화면과 지금 보고 있는 안내 문구를 받아 와요. 창을 내려 둔 학생은 화면이 오지 않을 수 있어요. 사진을 누르면 크게 보여요.</p>
+      <div class="row" style="margin-bottom:8px"><button class="btn" id="snapBtn" type="button">지금 화면 보기</button><button class="btn ghost" id="autoBtn" type="button">자동 새로 보기: 꺼짐</button></div>
+      <div class="shots" id="shots"></div>
+    </section>
+
+    <section class="box hide-big" style="grid-column:1/-1">
       <h2>학생 현황</h2>
       <p class="sub">초록 점 = 지금 접속 중 · 미션 칸 초록 = 성공 · 경고음 = 아이스크림 카드 순서가 틀린 횟수</p>
       <div class="studs" id="studs"></div>
@@ -139,6 +160,8 @@ body.big .box h2{font-size:30px}
   </div>
 </div>
 
+<div class="zoom" id="zoom" hidden><img id="zoomImg" alt="학생 화면 크게 보기"></div>
+
 <script>
 const FB_CONFIG={apiKey:"AIzaSyAQnkse4wP-o0pLE3Eyt9G69JdRJB6xzWI",authDomain:"artemis-6.firebaseapp.com",databaseURL:"https://artemis-6-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"artemis-6",storageBucket:"artemis-6.firebasestorage.app",messagingSenderId:"1686860032",appId:"1:1686860032:web:780e04604f720bcd8f43e5"};
 const qs=new URLSearchParams(location.search);
@@ -147,7 +170,7 @@ const BASE="artemis6/aion-"+ROOM;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 $("#room").textContent=ROOM;
-let db=null, data={settings:{},students:{},curl:{}};
+let db=null, data={settings:{},students:{},curl:{},live:{},snap:{}};
 const ref=p=>db.ref(BASE+(p?"/"+p:""));
 
 function init(){
@@ -158,6 +181,8 @@ function init(){
     ref("settings").on("value",s=>{ data.settings=s.val()||{}; renderToggles(); });
     ref("students").on("value",s=>{ data.students=s.val()||{}; renderStudents(); });
     ref("curl").on("value",s=>{ data.curl=s.val()||{}; renderBoards(); });
+    ref("live").on("value",s=>{ data.live=s.val()||{}; renderStudents(); renderShots(); });
+    ref("snap").on("value",s=>{ data.snap=s.val()||{}; renderShots(); });
   }).catch(e=>{ $("#net").className="pill off"; $("#net").querySelector("span").textContent="로그인 실패: "+e.code; });
 }
 
@@ -187,10 +212,26 @@ document.addEventListener("click",e=>{ const b=e.target.closest("[data-del]"); i
 function renderStudents(){
   const list=Object.entries(data.students).map(([k,v])=>({k,...v})).sort((a,b)=>(a.team-b.team)||(a.num-b.num));
   const on=list.filter(s=>s.online).length; $("#cnt").textContent="접속 "+on+"명 / 들어온 학생 "+list.length+"명";
-  $("#studs").innerHTML=list.length?list.map(s=>{ const ice=s.ice||{}; return '<div class="stu'+(s.online?" on":"")+'"><div class="nm"><i></i>'+esc(s.team)+'모둠 '+esc(s.num)+'번</div><div class="meta">'+(s.screen==="curl"?"컬링 화면":s.screen==="parts"?"아이온 살펴보기":"아이스크림 화면")+(s.wrong?" · 경고음 "+s.wrong+"번":"")+'</div><div class="ms">'+["m1","m2","m3","free"].map((m,i)=>'<span class="'+(ice[m]?"ok":"")+'">'+(m==="free"?"내맘":"미션"+(i+1))+'</span>').join("")+'</div></div>'; }).join(""):'<p class="empty">아직 들어온 학생이 없어요. 학생 주소: '+esc(location.origin+location.pathname.replace(/teacher-[^/]*$/,""))+(ROOM!=="main"?"?room="+esc(ROOM):"")+'</p>';
+  $("#studs").innerHTML=list.length?list.map(s=>{ const ice=s.ice||{}; return '<div class="stu'+(s.online?" on":"")+'"><div class="nm"><i></i>'+esc(s.team)+'모둠 '+esc(s.num)+'번</div><div class="meta">'+(s.screen==="curl"?"컬링 화면":s.screen==="parts"?"아이온 살펴보기":"아이스크림 화면")+(s.wrong?" · 경고음 "+s.wrong+"번":"")+'</div><div class="ms">'+["m1","m2","m3","free"].map((m,i)=>'<span class="'+(ice[m]?"ok":"")+'">'+(m==="free"?"내맘":"미션"+(i+1))+'</span>').join("")+'</div>'+((data.live||{})[s.k]?'<div class="lv">'+esc((data.live[s.k].b||data.live[s.k].a||""))+'</div>':'')+'</div>'; }).join(""):'<p class="empty">아직 들어온 학생이 없어요. 학생 주소: '+esc(location.origin+location.pathname.replace(/teacher-[^/]*$/,""))+(ROOM!=="main"?"?room="+esc(ROOM):"")+'</p>';
 }
 $("#resetIn").addEventListener("input",()=>{ $("#resetBtn").disabled=$("#resetIn").value.trim()!=="초기화"; });
-$("#resetBtn").onclick=async()=>{ if($("#resetIn").value.trim()!=="초기화"||!db) return; await ref("students").remove(); await ref("curl").remove(); await ref("notice").remove(); $("#resetIn").value=""; $("#resetBtn").disabled=true; };
+$("#resetBtn").onclick=async()=>{ if($("#resetIn").value.trim()!=="초기화"||!db) return; await ref("students").remove(); await ref("curl").remove(); await ref("notice").remove(); await ref("live").remove(); await ref("snap").remove(); $("#resetIn").value=""; $("#resetBtn").disabled=true; };
+/* 학생 화면 보기 */
+const hhmm=t=>{ try{ return new Date(t).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}); }catch(e){ return ""; } };
+function renderShots(){
+  const box=$("#shots"); if(!box) return;
+  const keys=new Set([...Object.keys(data.students||{}),...Object.keys(data.snap||{})]);
+  const list=[...keys].map(k=>{ const s=(data.students||{})[k]||{}, p=(data.snap||{})[k]||{}, l=(data.live||{})[k]||{}; return {k,team:s.team||p.team||l.team,num:s.num||p.num||l.num,on:!!s.online,img:p.img,t:p.t,a:l.a,b:l.b}; }).sort((x,y)=>(y.on-x.on)||(x.team-y.team)||(x.num-y.num));
+  box.innerHTML=list.length?list.map(s=>'<div class="shot'+(s.on?"":" off")+'"><div class="hd"><span>'+esc(s.team)+'모둠 '+esc(s.num)+'번</span><small>'+(s.t?hhmm(s.t):(s.on?"접속 중":"나감"))+'</small></div>'+(s.img?'<img src="'+esc(s.img)+'" alt="'+esc(s.team)+'모둠 '+esc(s.num)+'번 화면" data-zoom="1">':'<div class="noimg">아직 화면이 없어요<br>[지금 화면 보기]를 눌러요</div>')+'<div class="lt">'+esc(s.a||"")+(s.b?"<br>"+esc(s.b):"")+'</div></div>').join(""):'<p class="empty">아직 들어온 학생이 없어요.</p>';
+}
+$("#snapBtn").onclick=()=>{ if(db) ref("snapReq").set(Date.now()); };
+let autoT=null;
+$("#autoBtn").onclick=()=>{ if(autoT){ clearInterval(autoT); autoT=null; $("#autoBtn").textContent="자동 새로 보기: 꺼짐"; return; } if(db) ref("snapReq").set(Date.now()); autoT=setInterval(()=>{ if(db) ref("snapReq").set(Date.now()); },8000); $("#autoBtn").textContent="자동 새로 보기: 8초마다"; };
+document.addEventListener("click",e=>{ const im=e.target.closest("img[data-zoom]"); if(im){ $("#zoomImg").src=im.src; $("#zoom").hidden=false; return; } if(e.target.closest("#zoom")) $("#zoom").hidden=true; });
+/* 초기화 버튼(두 번 눌러 확인) */
+function armBtn(btn,label,fn){ const base=btn.textContent; let tm=null; btn.onclick=async()=>{ if(!db) return; if(!btn.classList.contains("armed")){ btn.classList.add("armed"); btn.textContent="한 번 더 누르면 "+label; tm=setTimeout(()=>{ btn.classList.remove("armed"); btn.textContent=base; },4000); return; } clearTimeout(tm); btn.classList.remove("armed"); btn.textContent=base; await fn(); }; }
+armBtn($("#rstCurl"),"컬링 기록 삭제",()=>ref("curl").remove());
+armBtn($("#rstAll"),"전체 삭제",()=>Promise.all(["students","curl","notice","live","snap","snapReq"].map(p=>ref(p).remove())));
 $("#bigBtn").onclick=()=>{ document.body.classList.toggle("big"); $("#bigBtn").textContent=document.body.classList.contains("big")?"관리 화면으로":"큰 화면(순위만)"; };
 
 /* 입장 비밀번호: 아르테미스 관제 센터와 같은 비밀번호(코드에는 해시만 있어요). 맞기 전에는 연결하지 않아요. */
