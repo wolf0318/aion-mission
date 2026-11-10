@@ -158,6 +158,21 @@ button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 .modal svg{width:96px;height:auto}
 .flying{position:fixed;z-index:50;margin:0;pointer-events:none;transition:transform .45s ease-in,opacity .25s;border-radius:10px}
 
+/* 아이온 살펴보기 */
+.pinfo{background:#fff6cf;border-radius:12px;padding:10px 12px;margin-top:8px;min-height:92px;font-size:15px}
+.pinfo b{font-family:var(--f-display);font-weight:400;font-size:22px;display:block;margin-bottom:2px}
+.pinfo .fb{font-weight:700;margin-top:4px}
+.pinfo .fb.good{color:var(--ok)} .pinfo .fb.bad{color:var(--bad)}
+.hsq{font-family:var(--f-display);font-size:26px;text-align:center;margin:6px 0 10px}
+.hsrow{display:flex;gap:8px}
+.hsrow .btn{flex:1;white-space:normal;line-height:1.2;font-size:18px;padding:8px 6px}
+.hsrow .btn small{display:block;font-family:var(--f-body);font-size:12px;opacity:.85}
+.hsfb{min-height:24px;margin:8px 0 0;font-weight:700;text-align:center}
+.pdots{display:flex;gap:4px;margin-top:8px}
+.pdots span{flex:1;height:8px;border-radius:4px;background:#e2ddd0}
+.pdots span.ok{background:var(--ok)} .pdots span.no{background:var(--bad)}
+@media (min-width:881px){ .parts-on .stage{height:calc(100vh - 110px)} }
+
 @media (max-width:880px){
   .wrap{grid-template-columns:minmax(0,1fr)}
   .stage{height:56vh}
@@ -189,6 +204,7 @@ button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
   <header class="top">
     <h1>아이온 미션</h1>
     <nav class="tabs" role="tablist" aria-label="활동 고르기">
+      <button class="tab" role="tab" id="tabParts" aria-selected="false" type="button">아이온 살펴보기</button>
       <button class="tab" role="tab" id="tabIce" aria-selected="true" type="button">아이스크림 미션</button>
       <button class="tab" role="tab" id="tabCurl" aria-selected="false" type="button">컬링 시합</button>
     </nav>
@@ -232,6 +248,25 @@ button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
       <div class="box">
         <h2 id="boardTitle">실시간 순위</h2>
         <div id="boardBox"></div>
+      </div>
+    </aside>
+
+    <!-- 왼쪽: 아이온 살펴보기 -->
+    <aside class="side" id="partSide" aria-label="아이온 살펴보기" hidden>
+      <div class="box">
+        <h2>아이온 살펴보기</h2>
+        <p class="sub">아이온을 눌러 부품 이름을 알아봐요. 끌면 돌려 볼 수 있어요.</p>
+        <div class="modes" id="pModes">
+          <button class="mode" data-p="look" type="button" aria-pressed="true"><b>살펴보기</b><span>눌러서 이름 보기</span></button>
+          <button class="mode" data-p="quiz" type="button" aria-pressed="false"><b>찾기 퀴즈</b><span>부품 6개 찾기</span></button>
+        </div>
+        <div class="pinfo" id="pInfo" aria-live="polite"></div>
+        <p class="small">그림은 실제 아이온과 조금 달라요. 내 아이온에서도 찾아봐요.</p>
+      </div>
+      <div class="box">
+        <h2>하드웨어? 소프트웨어?</h2>
+        <p class="sub">1차시에 배운 말이에요. 알맞은 쪽을 골라요.</p>
+        <div id="hsBox"></div>
       </div>
     </aside>
 
@@ -378,16 +413,19 @@ function busy(){ return st.busy||curl.moving; }
 function setTab(t){
   if(busy()) return;
   curTab=t;
-  $("#tabIce").setAttribute("aria-selected",t==="ice"?"true":"false");
-  $("#tabCurl").setAttribute("aria-selected",t==="curl"?"true":"false");
+  [["ice","#tabIce"],["curl","#tabCurl"],["parts","#tabParts"]].forEach(([k,id])=>$(id).setAttribute("aria-selected",t===k?"true":"false"));
   $("#iceSide").hidden=t!=="ice"; $("#iceConsole").hidden=t!=="ice";
   $("#curlSide").hidden=t!=="curl"; $("#curlConsole").hidden=t!=="curl";
-  $("#floatTxt").textContent=t==="ice"?"아이스크림 미션":"컬링 시합 · 놀이 자료 3";
-  activeScene=t==="ice"?ice.scene:curl.scene;
+  $("#partSide").hidden=t!=="parts";
+  document.body.classList.toggle("parts-on",t==="parts");
+  if(t==="parts") ensureParts();
+  $("#floatTxt").textContent=t==="ice"?"아이스크림 미션":t==="curl"?"컬링 시합 · 놀이 자료 3":partFloat();
+  activeScene=t==="ice"?ice.scene:t==="curl"?curl.scene:parts.scene;
   resetView();
   if(t==="curl"){ renderModes(); renderMyThrows(); renderBoard(); paintCurl(); }
   if(FB.ok&&me.team) fbUpdate("students/"+sid(),{screen:t});
 }
+$("#tabParts").addEventListener("click",()=>setTab("parts"));
 $("#tabIce").addEventListener("click",()=>{ if(settings.ice) setTab("ice"); });
 $("#tabCurl").addEventListener("click",()=>{ if(settings.solo||settings.team||settings.practice) setTab("curl"); });
 function applyLocks(){
@@ -445,7 +483,13 @@ function fitView(target,width,depth,elev){
 }
 function resetView(){
   if(!renderer) return;
+  controls.maxPolarAngle=curTab==="parts"?1.5:1.25;
   if(curTab==="ice") fitView(new THREE.Vector3(0,0,.1),10.2,6.3,THREE.MathUtils.degToRad(58));
+  else if(curTab==="parts"){
+    fitView(new THREE.Vector3(.2,.45,0),4.9,3.3,THREE.MathUtils.degToRad(26));
+    const off=camera.position.clone().sub(controls.target); off.applyAxisAngle(new THREE.Vector3(0,1,0),.8);
+    camera.position.copy(controls.target).add(off); controls.update();
+  }
   else fitView(new THREE.Vector3(4.6,0,.2),12.6,5.0,THREE.MathUtils.degToRad(48));
 }
 $("#viewBtn").addEventListener("click",()=>resetView());
@@ -516,6 +560,113 @@ function makeRobot(){
   return r;
 }
 function ledBlink(robot,on){ robot.userData.leds.forEach((m,i)=>{ m.emissiveIntensity=on?(.25+.9*((Math.sin(performance.now()/120+i*2)+1)/2)):.25; }); }
+
+/* ═════════════ 아이온 살펴보기 ═════════════ */
+const PARTS={
+  red:{name:"빨간 버튼",tip:"전원 버튼이에요. 누르면 불이 켜지면서 '삐리리리~릭' 소리가 나요."},
+  yellow:{name:"노란 버튼",tip:"준비와 출발에 써요. 길게 누르면 준비하고, 타이머 게임에서는 누른 시간만큼 앞으로 가요."},
+  track:{name:"캐터필러",tip:"바퀴에 연결한 띠예요. 모터가 캐터필러를 움직여서 험한 길도 잘 가요."},
+  ir:{name:"적외선 센서",tip:"눈에 보이지 않는 빛(적외선)으로 앞에 무엇이 있는지 느끼는 센서예요."},
+  color:{name:"컬러 센서",tip:"아이온 아래에 있어요. 카드를 넣었다 빼면 카드의 색을 읽어요."},
+  stud:{name:"블록 자리",tip:"블록을 끼워서 아이온을 꾸미는 곳이에요."}
+};
+const parts={scene:null,robot:null,map:{},mode:"look",sel:null,q:[],qi:0,tries:0,res:[],lock:false,fb:"",fbk:""};
+function partFloat(){ return parts.sel?PARTS[parts.sel].name:"아이온 살펴보기"; }
+function ensureParts(){
+  if(!renderHS.done){ renderHS.done=true; renderHS(); paintParts(); }
+  if(parts.scene||!renderer) return;
+  const s=baseScene(0xe9e5d8);
+  const ground=new THREE.Mesh(new THREE.CircleGeometry(7,48),new THREE.MeshStandardMaterial({color:0xd9d2bf,roughness:1}));
+  ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; s.add(ground);
+  const r=makeRobot(); r.scale.setScalar(2.4); s.add(r);
+  r.traverse(m=>{ if(m.isMesh) m.material=m.material.clone(); });
+  const lens=new THREE.MeshStandardMaterial({color:0x15171c,roughness:.2,metalness:.3});
+  [-.1,.1].forEach(z=>{ const l=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.03,20),lens.clone()); l.rotation.z=Math.PI/2; l.position.set(.44,.24,z); l.userData.part="ir"; r.add(l); });
+  const cs=new THREE.Mesh(new THREE.BoxGeometry(.14,.05,.18),new THREE.MeshStandardMaterial({color:0x2b2e34,roughness:.6})); cs.position.set(.42,.06,0); cs.userData.part="color"; r.add(cs);
+  const cl=new THREE.Mesh(new THREE.BoxGeometry(.02,.03,.12),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x66bbff,emissiveIntensity:.9})); cl.position.set(.495,.06,0); cl.userData.part="color"; r.add(cl);
+  r.traverse(m=>{
+    if(!m.isMesh||m.userData.part) return;
+    const p=m.position, gp=m.geometry.parameters||{};
+    if(Math.abs(Math.abs(p.z)-.36)<.02) m.userData.part="track";
+    else if(Math.abs(p.y-.48)<.01&&gp.radiusTop===.04) m.userData.part="red";
+    else if(Math.abs(p.y-.48)<.01&&gp.radiusTop===.05) m.userData.part="yellow";
+    else if(Math.abs(p.y-.48)<.01&&gp.radiusTop===.045) m.userData.part="stud";
+  });
+  parts.map={};
+  r.traverse(m=>{ const k=m.userData.part; if(m.isMesh&&k){ m.userData.e0=m.material.emissive.getHex(); m.userData.ei0=m.material.emissiveIntensity; (parts.map[k]=parts.map[k]||[]).push(m); } });
+  parts.robot=r; parts.scene=s;
+  tickers.add(()=>{ if(activeScene!==parts.scene) return; const t=performance.now()/1000;
+    Object.keys(parts.map).forEach(k=>{ const on=k===parts.sel; parts.map[k].forEach(m=>{ if(on){ m.material.emissive.setHex(parts.fbk==="bad"?0xff2a2a:0xffb300); m.material.emissiveIntensity=.55+.3*Math.sin(t*7); } else { m.material.emissive.setHex(m.userData.e0); m.material.emissiveIntensity=m.userData.ei0; } }); }); });
+  const dom=renderer.domElement; let down=null;
+  dom.addEventListener("pointerdown",e=>{ down={x:e.clientX,y:e.clientY}; });
+  dom.addEventListener("pointerup",e=>{
+    if(curTab!=="parts"||!down) return; const mv=Math.hypot(e.clientX-down.x,e.clientY-down.y); down=null; if(mv>8) return;
+    const rc=dom.getBoundingClientRect(); const v=new THREE.Vector2(((e.clientX-rc.left)/rc.width)*2-1,-((e.clientY-rc.top)/rc.height)*2+1);
+    const ray=new THREE.Raycaster(); ray.setFromCamera(v,camera);
+    const hit=ray.intersectObject(parts.robot,true).find(h=>h.object.userData.part);
+    pickPart(hit?hit.object.userData.part:null);
+  });
+}
+const hasB=w=>{ const c=w.charCodeAt(w.length-1); return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28>0; };
+const eulReul=w=>w+(hasB(w)?"을":"를");
+const ieyo=w=>w+(hasB(w)?"이에요":"예요");
+function wrongTone(){ tone(220,.16,0,"sawtooth",.06); tone(175,.22,.17,"sawtooth",.06); }
+function pickPart(k){
+  if(parts.mode==="look"){ parts.sel=k; parts.fbk=""; if(k) snd.pop(); paintParts(); return; }
+  if(parts.lock||parts.qi>=parts.q.length||!k) return;
+  const want=parts.q[parts.qi];
+  if(k===want){
+    parts.res.push(parts.tries===0); parts.sel=k; parts.fbk="good"; parts.fb="맞았어요! "+PARTS[k].tip; snd.ding(); parts.lock=true; paintParts();
+    setTimeout(()=>{ parts.qi++; parts.tries=0; parts.lock=false; parts.sel=null; parts.fb=""; parts.fbk=""; if(parts.qi>=parts.q.length) snd.win(); paintParts(); },1600);
+  }else{
+    parts.tries++; parts.sel=k; parts.fbk="bad"; parts.fb="그건 "+ieyo(PARTS[k].name)+". 다시 찾아봐요."; wrongTone(); paintParts();
+  }
+}
+function startPartQuiz(){ const ks=Object.keys(PARTS); for(let i=ks.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [ks[i],ks[j]]=[ks[j],ks[i]]; } Object.assign(parts,{q:ks,qi:0,tries:0,res:[],lock:false,sel:null,fb:"",fbk:""}); }
+function paintParts(){
+  [...document.querySelectorAll("#pModes .mode")].forEach(b=>b.setAttribute("aria-pressed",b.dataset.p===parts.mode?"true":"false"));
+  const box=$("#pInfo"); box.textContent="";
+  const B=txt=>{ const b=document.createElement("b"); b.textContent=txt; box.appendChild(b); };
+  const P=(txt,cls)=>{ const p=document.createElement("div"); if(cls) p.className=cls; p.textContent=txt; box.appendChild(p); return p; };
+  if(parts.mode==="look"){
+    if(parts.sel){ B(PARTS[parts.sel].name); P(PARTS[parts.sel].tip); }
+    else { B("어디를 눌러 볼까요?"); P("버튼, 캐터필러, 앞쪽 센서, 아래쪽 센서, 블록 자리를 눌러 보세요."); }
+  }else if(parts.qi<parts.q.length){
+    B((parts.qi+1)+"번. "+eulReul(PARTS[parts.q[parts.qi]].name)+" 찾아 눌러요");
+    if(parts.fb) P(parts.fb,"fb "+parts.fbk);
+    const d=document.createElement("div"); d.className="pdots"; parts.q.forEach((_,i)=>{ const s=document.createElement("span"); if(i<parts.res.length) s.className=parts.res[i]?"ok":"no"; d.appendChild(s); }); box.appendChild(d);
+  }else{
+    const n=parts.res.filter(Boolean).length;
+    B("다 찾았어요!"); P("한 번에 찾은 부품 "+n+"개 / "+parts.q.length+"개");
+    const again=document.createElement("button"); again.type="button"; again.className="linkbtn"; again.textContent="다시 하기"; again.onclick=()=>{ startPartQuiz(); paintParts(); }; box.appendChild(again);
+  }
+  if(curTab==="parts") $("#floatTxt").textContent=partFloat();
+}
+document.querySelectorAll("#pModes .mode").forEach(b=>b.addEventListener("click",()=>{ parts.mode=b.dataset.p; if(parts.mode==="quiz") startPartQuiz(); else Object.assign(parts,{sel:null,fb:"",fbk:"",lock:false}); paintParts(); }));
+const HS=[["모니터","h"],["게임 앱","s"],["마우스","h"],["크롬 웹 브라우저","s"],["아이온의 모터","h"],["사진 찍는 카메라 앱","s"],["아이온의 캐터필러","h"],["밥솥의 요리 프로그램","s"]];
+let hs={i:0,ok:0,marks:[],fb:"",good:false,lock:false};
+const eunNeun=w=>{ const c=w.charCodeAt(w.length-1); if(c<0xAC00||c>0xD7A3) return w+"은(는)"; return w+((c-0xAC00)%28?"은":"는"); };
+function renderHS(){
+  const b=$("#hsBox"); b.textContent="";
+  if(hs.i>=HS.length){
+    const q=document.createElement("p"); q.className="hsq"; q.textContent=HS.length+"개 중 "+hs.ok+"개 맞았어요"; b.appendChild(q);
+    const m=document.createElement("p"); m.className="small"; m.textContent="하드웨어는 눈으로 보고 손으로 만질 수 있는 기계, 소프트웨어는 하드웨어를 작동시키는 프로그램이에요."; b.appendChild(m);
+    const r=document.createElement("button"); r.type="button"; r.className="btn ghost"; r.style.width="100%"; r.textContent="다시 하기"; r.onclick=()=>{ hs={i:0,ok:0,marks:[],fb:"",good:false,lock:false}; renderHS(); }; b.appendChild(r);
+    return;
+  }
+  const q=document.createElement("p"); q.className="hsq"; q.textContent=HS[hs.i][0]; b.appendChild(q);
+  const row=document.createElement("div"); row.className="hsrow";
+  [["h","하드웨어","만질 수 있는 기계"],["s","소프트웨어","작동시키는 프로그램"]].forEach(([k,tt,sub])=>{ const x=document.createElement("button"); x.type="button"; x.className="btn"+(k==="s"?" ghost":""); x.textContent=tt; const sm=document.createElement("small"); sm.textContent=sub; x.appendChild(sm); x.disabled=hs.lock; x.onclick=()=>answerHS(k); row.appendChild(x); });
+  b.appendChild(row);
+  const f=document.createElement("p"); f.className="hsfb"; f.textContent=hs.fb; f.style.color=hs.good?"var(--ok)":"var(--bad)"; b.appendChild(f);
+  const d=document.createElement("div"); d.className="pdots"; HS.forEach((_,i)=>{ const s=document.createElement("span"); if(i<hs.i||(hs.lock&&i===hs.i)) s.className=hs.marks[i]?"ok":"no"; d.appendChild(s); }); b.appendChild(d);
+}
+function answerHS(k){
+  if(hs.lock) return; const [name,ans]=HS[hs.i]; const ok=k===ans; const kind=ans==="h"?"하드웨어":"소프트웨어";
+  hs.marks[hs.i]=ok; if(ok){ hs.ok++; snd.ding(); } else wrongTone();
+  hs.fb=(ok?"맞았어요! ":"아쉬워요. ")+eunNeun(name)+" "+kind+"예요."; hs.good=ok; hs.lock=true; renderHS();
+  setTimeout(()=>{ hs.i++; hs.lock=false; hs.fb=""; renderHS(); },1500);
+}
 
 /* ═════════════ 아이스크림 미션 ═════════════ */
 const X=[170,410,650,890], Y=[210,470];
