@@ -365,7 +365,7 @@ async function startApp(changed){
     startApp.listening=true;
     ref("settings").on("value",snap=>{ const v=snap.val()||{}; settings={ice:v.ice!==false,solo:v.solo!==false,team:v.team!==false,practice:v.practice!==false}; applyLocks(); });
     ref("notice").on("value",snap=>{ const v=snap.val(); if(v&&v.text&&v.t&&Date.now()-v.t<10*60*1000&&String(v.t)!==ls.get("aion_seen_notice")){ $("#noticeTxt").textContent=v.text; $("#notice").hidden=false; snd.ding(); $("#notice").dataset.t=v.t; } else if(!v||!v.text){ $("#notice").hidden=true; } });
-    ref("curl").on("value",snap=>{ curlData=snap.val()||{}; renderBoard(); renderMyThrows(); });
+    ref("curl").on("value",snap=>{ curlData=snap.val()||{}; if(!curl.moving){ renderBoard(); renderMyThrows(); paintCurl(); } });
     ref("students/"+sid()+"/ice").once("value",snap=>{ const v=snap.val(); if(v){ Object.assign(cleared,v); renderMTabs(); } });
   }
   if(changed){ curlData=curlData||{}; renderMyThrows(); renderBoard(); }
@@ -838,16 +838,16 @@ async function cHoldEnd(e){ if(e) e.preventDefault(); if(!curl.holding) return; 
   if(ms<150){ curl.last="너무 짧게 눌렀어요. 꾹 눌렀다 떼요."; paintCurl(); return; }
   const mode=curl.mode;
   const dist=ms/1000*SPEED*(1+(Math.random()*.04-.02));
-  curl.moving=true; renderModes(); paintCurl();
   const r=curl.robot, x0=0, x1=Math.min(dist,FIELD.x1+.6);
-  await tween(Math.max(300,ms),k=>{ r.position.x=x0+(x1-x0)*k; });
   let s=scoreAt(x1); const out=dist>FIELD.x1;
+  const rec={team:me.team,num:me.num,ms,d:Math.round(x1*100)/100,s,t:Date.now()};
+  curl.moving=true; renderModes(); paintCurl();
+  if(mode!=="practice"){ if(FB.ok){ fbPush("curl/"+mode+"/"+sid(),rec); } else { localThrows[mode].push(rec); } }
+  await tween(Math.max(300,ms),k=>{ r.position.x=x0+(x1-x0)*k; });
   if(out){ await tween(400,k=>{ r.position.y=-k*.3; r.rotation.z=-k*.4; }); }
   snd[s>=8?"win":(s===0?"oops":"ding")]();
   const mk=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.35,10),new THREE.MeshStandardMaterial({color:s>=8?0xd9343b:0xffffff})); mk.position.set(Math.min(x1,FIELD.x1),.17,(Math.random()-.5)*.6); curl.marks.add(mk); if(curl.marks.children.length>8) curl.marks.remove(curl.marks.children[0]);
   curl.last=(out?"밖으로 나갔어요! ":"")+(ms/1000).toFixed(2)+"초 눌러서 "+x1.toFixed(1)+"칸 → "+s+"점";
-  const rec={team:me.team,num:me.num,ms,d:Math.round(x1*100)/100,s,t:Date.now()};
-  if(mode!=="practice"){ if(FB.ok){ await fbPush("curl/"+mode+"/"+sid(),rec); } else { localThrows[mode].push(rec); } }
   await wait(900);
   if(out){ r.position.y=0; r.rotation.z=0; }
   curl.moving=false; renderModes(); renderMyThrows(); renderBoard(); paintCurl();
