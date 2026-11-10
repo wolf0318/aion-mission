@@ -401,7 +401,7 @@ async function startApp(changed){
     ref("settings").on("value",snap=>{ const v=snap.val()||{}; settings={ice:v.ice!==false,solo:v.solo!==false,team:v.team!==false,practice:v.practice!==false}; applyLocks(); });
     ref("notice").on("value",snap=>{ const v=snap.val(); if(v&&v.text&&v.t&&Date.now()-v.t<10*60*1000&&String(v.t)!==ls.get("aion_seen_notice")){ $("#noticeTxt").textContent=v.text; $("#notice").hidden=false; snd.ding(); $("#notice").dataset.t=v.t; } else if(!v||!v.text){ $("#notice").hidden=true; } });
     ref("curl").on("value",snap=>{ curlData=snap.val()||{}; if(!curl.moving){ renderBoard(); renderMyThrows(); paintCurl(); } });
-    ref("snapReq").on("value",snap=>{ const v=snap.val(); if(snapFirst){ snapFirst=false; lastSnapReq=v; return; } if(v&&v!==lastSnapReq){ lastSnapReq=v; if(renderer&&activeScene) snapWanted=true; else takeSnap(); } });
+    ref("snapReq").on("value",snap=>{ const v=snap.val(); if(snapFirst){ snapFirst=false; lastSnapReq=v; return; } if(v&&v!==lastSnapReq){ lastSnapReq=v; if(renderer&&activeScene){ snapWanted=true; setTimeout(()=>{ if(snapWanted){ try{ renderer.render(activeScene,camera); }catch(e){} takeSnap(); } },1200); } else takeSnap(); } });
     ref("students/"+sid()+"/ice").once("value",snap=>{ const v=snap.val(); if(v){ Object.assign(cleared,v); renderMTabs(); } });
   }
   if(changed){ curlData=curlData||{}; renderMyThrows(); renderBoard(); }
