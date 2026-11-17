@@ -92,7 +92,7 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
 #board .bh b{font-size:18px;color:var(--navy)}
 #board .bb{flex:1;overflow:auto;padding:10px 14px}
 .srow{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #eef1f5}
-.srow .who{flex:0 0 92px;font-weight:700;font-size:15px}
+.srow .who{flex:0 0 112px;font-weight:700;font-size:15px}
 .srow .who i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#c3ccd7;margin-right:5px;vertical-align:middle}
 .srow.on .who i{background:#2fbf5b}
 .badges{display:flex;flex-wrap:wrap;gap:4px}
@@ -109,6 +109,23 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
 #big{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:46px;font-weight:900;color:#fff;text-shadow:0 3px 12px rgba(0,0,0,.5);pointer-events:none;display:none;text-align:center}
 .drawtools{display:none;gap:6px;align-items:center}
 .drawtools.on{display:inline-flex}
+.roomlist{margin:4px 0 12px}
+.ritem{display:flex;align-items:center;gap:10px;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:6px;background:#fff}
+.ritem b{font-size:16px}
+.ritem .sub{font-size:13px;color:var(--muted);margin-top:2px}
+.sides{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.side{border:2px solid;border-radius:12px;padding:8px 10px;min-height:64px}
+.side.a{border-color:#2463d6;background:#eef4ff}.side.b{border-color:#d6372c;background:#fff0ee}
+.side .sh{font-weight:800;margin-bottom:4px}
+.side.a .sh{color:#2463d6}.side.b .sh{color:#d6372c}
+.pl{font-weight:700;font-size:15px;padding:2px 0}
+.pl.me span{background:#ffe680;border-radius:6px;padding:1px 6px}
+.ctlrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.dpad{display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,50px);gap:6px;touch-action:none;user-select:none;-webkit-user-select:none}
+.dpad button{border:1px solid var(--line);border-radius:12px;background:#fff;font-size:24px;font-weight:800;cursor:pointer;touch-action:none;color:var(--ink)}
+.dpad button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.dpad .u{grid-column:2;grid-row:1}.dpad .l{grid-column:1;grid-row:2}.dpad .d{grid-column:2;grid-row:2}.dpad .r{grid-column:3;grid-row:2}
+#myColor{font-weight:800;font-size:17px}
 @media (max-width:900px){main{flex-direction:column}#left{min-height:430px}#right{min-height:420px}}
 @media (max-width:600px){header .note{display:none}}
 </style>
@@ -124,7 +141,7 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
   </div>
   <span class="note">화면 속 가상 아이온이에요. 실제 아이온과 움직이는 시간은 조금 달라요.</span>
   <span class="net" id="net" hidden><i></i><span>연결 중</span></span>
-  <button class="hbtn" id="meBtn" type="button" hidden>모둠, 번호 고르기</button>
+  <button class="hbtn" id="meBtn" type="button" hidden>번호 고르기</button>
   <button class="hbtn" id="boardBtn" type="button" hidden>우리 반 현황</button>
 </header>
 <main>
@@ -214,11 +231,29 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
     <div class="mode" id="m-sumo">
       <div class="pad">
         <h2>자리 뺏기 씨름</h2>
-        <div class="hint">아이온 상자 경기장에서 상대 아이온을 밖으로 밀어내면 이겨요. 한 컴퓨터에서 두 사람이 해요.</div>
-        <div class="rules"><b style="color:#2463d6">파랑(1P)</b> <span class="kbd">W</span> 앞 <span class="kbd">S</span> 뒤 <span class="kbd">A</span> 왼쪽 <span class="kbd">D</span> 오른쪽<br><b style="color:#d6372c">빨강(2P)</b> <span class="kbd">↑</span> 앞 <span class="kbd">↓</span> 뒤 <span class="kbd">←</span> 왼쪽 <span class="kbd">→</span> 오른쪽</div>
-        <div class="score"><span class="p1">파랑 <span id="s1">0</span></span><span>:</span><span class="p2"><span id="s2">0</span> 빨강</span></div>
-        <div class="row"><button class="btn go" id="sumoStart" type="button">▶ 경기 시작</button><button class="btn" id="sumoReset" type="button">점수 지우기</button></div>
-        <div class="hint">진짜 수업에서는 태블릿을 기울여서(자이로 센서) 움직여요. 컴퓨터에는 기울이는 센서가 없어서 키보드로 해요.</div>
+        <div id="sumoLobby">
+          <div class="hint" id="lobbyMsg">상대 아이온을 경기장 밖으로 밀어내면 이겨요.</div>
+          <div class="row"><button class="btn go" id="mk1v1" type="button">1:1 방 만들기</button><button class="btn go" id="mkTeam" type="button">모둠 팀전 방 만들기</button></div>
+          <div class="lbl" style="margin-top:10px">들어갈 수 있는 방</div>
+          <div class="roomlist" id="roomList"></div>
+          <div class="lbl">대기실에 있는 친구</div>
+          <div class="hint" id="lobbyFriends" style="margin-top:2px">아직 없어요.</div>
+        </div>
+        <div id="sumoRoom" hidden>
+          <div style="font-size:18px;font-weight:800;color:var(--navy);margin:2px 0 4px" id="roomTitle"></div>
+          <div class="sides">
+            <div class="side a"><div class="sh">파랑 <span id="sideT0"></span></div><div id="side0"></div></div>
+            <div class="side b"><div class="sh">빨강 <span id="sideT1"></span></div><div id="side1"></div></div>
+          </div>
+          <div class="score" style="font-size:26px;margin:4px 0"><span class="p1">파랑 <span id="rs1">0</span></span><span>:</span><span class="p2"><span id="rs2">0</span> 빨강</span></div>
+          <div class="hint" id="roomMsg" style="margin:4px 0 8px;font-weight:700;color:var(--ink)"></div>
+          <div class="row"><button class="btn go" id="roomStart" type="button">▶ 경기 시작</button><button class="btn" id="roomLeave" type="button">방 나가기</button></div>
+          <div class="ctlrow">
+            <div class="dpad" id="dpad"><button class="u" data-k="up" type="button">↑</button><button class="l" data-k="left" type="button">←</button><button class="d" data-k="down" type="button">↓</button><button class="r" data-k="right" type="button">→</button></div>
+            <div><div id="myColor"></div><div class="hint" style="margin:4px 0 0">키보드 <span class="kbd">↑</span> <span class="kbd">↓</span> <span class="kbd">←</span> <span class="kbd">→</span> 또는 <span class="kbd">W</span> <span class="kbd">A</span> <span class="kbd">S</span> <span class="kbd">D</span><br>왼쪽 버튼을 꾹 눌러도 움직여요.</div></div>
+          </div>
+        </div>
+        <div class="hint" style="margin-top:14px">진짜 수업에서는 태블릿을 기울여서(자이로 센서) 움직여요. 컴퓨터에는 기울이는 센서가 없어서 키보드나 화면 버튼으로 해요.</div>
       </div>
     </div>
   </section>
@@ -247,11 +282,11 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
 <div id="noticeBar" hidden><b>선생님 알림</b><span id="noticeTxt"></span><button class="btn" id="noticeX" type="button">닫기</button></div>
 <div id="join" hidden>
   <div class="joinbox">
-    <h2>모둠과 번호를 골라요</h2>
-    <div class="hint">미션에 성공하면 우리 반 현황에 모둠과 번호가 올라가요. 이름은 쓰지 않아요.</div>
-    <div class="lbl">모둠</div><div class="pick" id="pickTeam"></div>
-    <div class="lbl">번호</div><div class="pick" id="pickNum"></div>
-    <div class="row"><button class="btn go" id="joinBtn" type="button" disabled>모둠과 번호를 골라요</button><button class="btn" id="joinSkip" type="button">혼자 연습하기</button></div>
+    <h2>내 번호와 모둠을 골라요</h2>
+    <div class="hint">번호를 먼저 누르고, 내 모둠을 눌러요. 이름은 쓰지 않아요.<br>씨름 팀전에서는 같은 모둠 친구와 한 편이 돼요.</div>
+    <div class="lbl">① 번호</div><div class="pick" id="pickNum"></div>
+    <div class="lbl">② 모둠</div><div class="pick" id="pickTeam"></div>
+    <div class="row"><button class="btn go" id="joinBtn" type="button" disabled>번호를 골라요</button><button class="btn" id="joinSkip" type="button">혼자 연습하기</button></div>
   </div>
 </div>
 <aside id="board" hidden>
@@ -616,28 +651,218 @@ function joyReset(){ joy.viol=0; joy.done=false; joy.cwStop=false; joy.stopT=0; 
 $('#joyReset').onclick=joyReset;
 
 /* ───────── 씨름 ───────── */
-const SUMO={on:false,p:[],score:[0,0],arena:{x:150,y:150,s:600},ended:false};
-function sumoInit(){ SUMO.p=[{x:300,y:450,h:0,v:0,w:0,col:'#2463d6'},{x:600,y:450,h:180,v:0,w:0,col:'#d6372c'}]; SUMO.ended=false; }
+/* 한 컴퓨터 둘이(local)와 온라인 대전(net)을 같은 엔진으로 돌림. 온라인은 방장 컴퓨터가 계산하고, 다른 친구는 조종 입력만 보냄 */
+const SUMO={on:false,p:[],score:[0,0],arena:{x:150,y:150,s:600},ended:false,view:'online',net:null,inputs:{},pad:{},rooms:{},lastPub:'',pubT:0};
+const SIDE_COL=['#2463d6','#d6372c'], SIDE_NAME=['파랑','빨강'];
+function sumoBody(id,side,x,y,h,label){ return {id:id,side:side,x:x,y:y,h:h,v:0,w:0,col:SIDE_COL[side],out:false,label:label||'',tx:x,ty:y,th:h}; }
+function sumoInit(){ MAPS.sumo.cm=36; SUMO.p=[sumoBody('L1',0,300,450,0,''),sumoBody('L2',1,600,450,180,'')]; SUMO.ended=false; }
+function sumoK(){ return MAPS.sumo.w/MAPS.sumo.cm; }
+function myInput(){ if(typeof ctl!=='undefined'&&ctl.lock) return {f:0,t:0}; const K=joy.keys, P=SUMO.pad; const up=K.ArrowUp||K.KeyW||P.up, dn=K.ArrowDown||K.KeyS||P.down, lf=K.ArrowLeft||K.KeyA||P.left, rt=K.ArrowRight||K.KeyD||P.right; return {f:(up?1:0)-(dn?1:0),t:(rt?1:0)-(lf?1:0)}; }
+function angLerp(a,b,f){ const d=((b-a)%360+540)%360-180; return a+d*f; }
 function sumoStep(dt){
-  const K=joy.keys, k=MAPS.sumo.w/MAPS.sumo.cm;
-  const ctl=[[K.KeyW,K.KeyS,K.KeyA,K.KeyD],[K.ArrowUp,K.ArrowDown,K.ArrowLeft,K.ArrowRight]];
-  SUMO.p.forEach((p,i)=>{ const c=ctl[i]; const f=SUMO.on&&!SUMO.ended?((c[0]?1:0)-(c[1]?1:0)):0, t=SUMO.on&&!SUMO.ended?((c[3]?1:0)-(c[2]?1:0)):0; p.v=V100*0.9*f; p.w=S100*1.4*t; p.h+=p.w*dt; const th=p.h*Math.PI/180; p.x+=p.v*k*Math.cos(th)*dt; p.y+=p.v*k*Math.sin(th)*dt; });
-  const a=SUMO.p[0], b=SUMO.p[1]; const dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy)||1, minD=ROBOT_W*k*0.95;
-  if(d<minD){ const nx=dx/d, ny=dy/d, o=minD-d; const sa=Math.max(0,a.v*(Math.cos(a.h*Math.PI/180)*nx+Math.sin(a.h*Math.PI/180)*ny)), sb=Math.max(0,b.v*(-(Math.cos(b.h*Math.PI/180)*nx+Math.sin(b.h*Math.PI/180)*ny))); const tot=sa+sb; const ma=tot?sb/tot:0.5, mb=tot?sa/tot:0.5; a.x-=nx*o*ma; a.y-=ny*o*ma; b.x+=nx*o*mb; b.y+=ny*o*mb; }
-  if(SUMO.on&&!SUMO.ended){ const A=SUMO.arena; SUMO.p.forEach((p,i)=>{ if(SUMO.ended) return; if(p.x<A.x||p.x>A.x+A.s||p.y<A.y||p.y>A.y+A.s){ SUMO.ended=true; const win=1-i; SUMO.score[win]++; $('#s1').textContent=SUMO.score[0]; $('#s2').textContent=SUMO.score[1]; okTone(); big((win===0?'<span style="color:#9cc3ff">파랑</span>':'<span style="color:#ffb1aa">빨강</span>')+' 승리!',2500); } }); }
+  const net=SUMO.net;
+  if(net&&!net.host){ const f=Math.min(1,dt*14); SUMO.p.forEach(p=>{ p.x+=(p.tx-p.x)*f; p.y+=(p.ty-p.y)*f; p.h=angLerp(p.h,p.th,f); }); sumoSendInput(); return; }
+  const k=sumoK(), active=SUMO.on&&!SUMO.ended, K=joy.keys;
+  const inp=SUMO.p.map((p,i)=>{
+    if(!active||p.out) return {f:0,t:0};
+    if(!net){ const c=i===0?[K.KeyW,K.KeyS,K.KeyA,K.KeyD]:[K.ArrowUp,K.ArrowDown,K.ArrowLeft,K.ArrowRight]; return {f:(c[0]?1:0)-(c[1]?1:0),t:(c[3]?1:0)-(c[2]?1:0)}; }
+    if(p.id===sid()) return myInput();
+    const v=SUMO.inputs[p.id]||{}; return {f:Math.max(-1,Math.min(1,+v.f||0)),t:Math.max(-1,Math.min(1,+v.t||0))};
+  });
+  const steps=Math.max(1,Math.ceil(dt/0.02)), h=dt/steps;
+  for(let s=0;s<steps;s++){
+    SUMO.p.forEach((p,i)=>{ if(p.out) return; p.v=V100*0.9*inp[i].f; p.w=S100*1.4*inp[i].t; p.h+=p.w*h; const th=p.h*Math.PI/180; p.x+=p.v*k*Math.cos(th)*h; p.y+=p.v*k*Math.sin(th)*h; });
+    sumoCollide(k);
+  }
+  if(active) sumoCheckOut();
+  if(net&&net.host) sumoPublish(false);
+}
+function sumoCollide(k){
+  const minD=ROBOT_W*k*0.95, P=SUMO.p.filter(p=>!p.out);
+  for(let i=0;i<P.length;i++) for(let j=i+1;j<P.length;j++){
+    const a=P[i], b=P[j]; let dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy); if(d>=minD) continue; if(d<1e-6){ dx=1; dy=0; d=1; }
+    const nx=dx/d, ny=dy/d, o=minD-Math.hypot(b.x-a.x,b.y-a.y);
+    const sa=Math.max(0,a.v*(Math.cos(a.h*Math.PI/180)*nx+Math.sin(a.h*Math.PI/180)*ny)), sb=Math.max(0,b.v*(-(Math.cos(b.h*Math.PI/180)*nx+Math.sin(b.h*Math.PI/180)*ny)));
+    const tot=sa+sb, ma=tot?sb/tot:0.5, mb=tot?sa/tot:0.5;
+    a.x-=nx*o*ma; a.y-=ny*o*ma; b.x+=nx*o*mb; b.y+=ny*o*mb;
+  }
+}
+function sumoCheckOut(){
+  const A=SUMO.arena; let changed=false;
+  SUMO.p.forEach(p=>{ if(p.out) return; if(p.x<A.x||p.x>A.x+A.s||p.y<A.y||p.y>A.y+A.s){ p.out=true; p.v=0; p.w=0; changed=true; tone(220,0.25,'sawtooth',0.05); } });
+  if(changed) sumoCheckAlive();
+}
+function sumoCheckAlive(){
+  if(SUMO.ended) return;
+  const alive=[0,1].map(s=>SUMO.p.some(p=>p.side===s&&!p.out)); if(alive[0]&&alive[1]) return;
+  SUMO.ended=true; const win=alive[0]?0:(alive[1]?1:-1);
+  if(!SUMO.net){ if(win>=0){ SUMO.score[win]++; $('#s1').textContent=SUMO.score[0]; $('#s2').textContent=SUMO.score[1]; } okTone(); big(win<0?'비겼어요!':((win===0?'<span style="color:#9cc3ff">파랑</span>':'<span style="color:#ffb1aa">빨강</span>')+' 승리!'),2500); }
+  else if(SUMO.net.host) sumoHostEnd(win);
 }
 function renderSumo(g){
-  const A=SUMO.arena, k=MAPS.sumo.w/MAPS.sumo.cm;
+  const A=SUMO.arena, k=sumoK(), n=SUMO.net, r=n&&n.room;
   g.fillStyle='#dfe7ef'; g.fillRect(0,0,900,900);
   g.fillStyle='#fdfdfd'; g.strokeStyle='#7fa7c9'; g.lineWidth=10; g.fillRect(A.x,A.y,A.s,A.s); g.strokeRect(A.x,A.y,A.s,A.s);
   g.fillStyle='#cfe3f2'; g.beginPath(); g.moveTo(A.x,A.y+A.s); g.lineTo(A.x+A.s,A.y); g.lineTo(A.x+A.s,A.y+A.s); g.closePath(); g.globalAlpha=0.5; g.fill(); g.globalAlpha=1;
   g.fillStyle='#9db8cf'; g.font='bold 120px Arial, sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('AION',450,450); g.textBaseline='alphabetic';
-  g.fillStyle='#5b6b7b'; g.font='bold 28px Malgun Gothic, sans-serif'; g.fillText('아이온 상자 경기장',450,120);
-  SUMO.p.forEach(p=>drawRobot(g,p.x,p.y,p.h,{ring:p.col,led:p.col,blink:false}));
+  g.fillStyle='#5b6b7b'; g.font='bold 28px Malgun Gothic, sans-serif';
+  g.fillText(r?(r.kind==='team'?(r.teamA+'모둠 vs '+(r.teamB?r.teamB+'모둠':'?모둠')+' 팀전'):'온라인 1:1 대결'):'아이온 상자 경기장',450,120);
+  SUMO.p.forEach(p=>{ if(p.out) return; drawRobot(g,p.x,p.y,p.h,{ring:p.col,led:p.col,blink:false}); });
+  SUMO.p.forEach(p=>{
+    if(p.out) return; const mine=!!n&&p.id===sid(); const txt=(mine?'나 ':'')+p.label; if(!txt) return;
+    g.font='bold '+(k>20?26:22)+'px Malgun Gothic, sans-serif'; g.textAlign='center'; const tw=g.measureText(txt).width, ty=p.y-ROBOT_W*k*0.62-10;
+    g.fillStyle=mine?'#ffd400':'rgba(255,255,255,.92)'; g.fillRect(p.x-tw/2-8,ty-25,tw+16,32);
+    g.fillStyle=mine?'#3a2d00':p.col; g.fillText(txt,p.x,ty);
+  });
+  const me1=n?SUMO.p.find(p=>p.id===sid()):null;
+  $('#stPos').textContent=n?(me1?('내 아이온: '+SIDE_NAME[me1.side]+(me1.out?' (밖으로 밀려남)':'')):'방에 들어왔어요'):'씨름 대기실';
+  $('#stMove').textContent=''; $('#stLed').textContent='';
 }
-$('#sumoStart').onclick=async()=>{ ac(); sumoInit(); SUMO.on=false; for(const n of ['3','2','1']){ big(n,900); tone(660,0.12,'square',0.05); await sleepRaw(900); } big('시작!',800); tone(990,0.25,'square',0.06); SUMO.on=true; };
-$('#sumoReset').onclick=()=>{ SUMO.score=[0,0]; $('#s1').textContent='0'; $('#s2').textContent='0'; sumoInit(); SUMO.on=false; };
 sumoInit();
+
+/* ── 씨름 온라인 대기실과 방 ── */
+function sumoPanels(){ const inRoom=!!SUMO.net; $('#sumoLobby').hidden=inRoom; $('#sumoRoom').hidden=!inRoom; renderLobby(); renderRoom(); }
+const roomRef=id=>fref('sumo/rooms/'+id);
+function sumoCanJoin(r){ const pl=r.players||{}; if(pl[sid()]) return true; const arr=Object.values(pl); if(r.kind!=='team') return arr.length<2; const ca=arr.filter(p=>+p.side===0).length, cb=arr.filter(p=>+p.side===1).length; if(me.team===r.teamA) return ca<4; if(!r.teamB||r.teamB===me.team) return cb<4; return false; }
+function renderLobby(){
+  if(mode!=='sumo'||SUMO.net) return;
+  const ok=FB.ok&&FB.joined; $('#mk1v1').disabled=!ok; $('#mkTeam').disabled=!ok;
+  $('#lobbyMsg').textContent=!FB.ok?'우리 반과 연결되지 않아 씨름 대전을 할 수 없어요. 새로 고침(F5)을 눌러 보세요. 그래도 안 되면 선생님께 말해요.':(!FB.joined?'번호와 모둠을 골라야 온라인 대전을 할 수 있어요. 위쪽 [번호 고르기]를 눌러요.':('방을 만들거나 친구가 만든 방에 들어가요. 상대 아이온을 경기장 밖으로 밀어내면 이겨요. (나: '+me.num+'번, '+me.team+'모둠)'));
+  const now=Date.now();
+  const rooms=Object.entries(SUMO.rooms||{}).map(([id,r])=>Object.assign({id:id},r)).filter(r=>r&&r.players&&!(r.created&&now-r.created>3*3600000)).sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,20);
+  $('#roomList').innerHTML=rooms.length?rooms.map(r=>{
+    const pl=Object.values(r.players||{}), ca=pl.filter(p=>+p.side===0).length, cb=pl.filter(p=>+p.side===1).length;
+    const title=r.kind==='team'?(r.teamA+'모둠 vs '+(r.teamB?r.teamB+'모둠':'?모둠')+' 팀전'):(r.hostNum+'번의 1:1 방');
+    const playing=r.state==='count'||r.state==='play', can=ok&&!playing&&sumoCanJoin(r);
+    let sub=playing?'경기 중이에요':(r.kind==='team'?('파랑 '+ca+'명 : 빨강 '+cb+'명 (모둠당 4명까지)'):(pl.length>=2?'자리가 꽉 찼어요':'상대를 기다려요'));
+    if(ok&&!playing&&!can&&r.kind==='team') sub+=', 우리 모둠은 들어갈 수 없어요';
+    return '<div class="ritem"><div><b>'+escH(title)+'</b><div class="sub">'+escH(sub)+'</div></div><button class="btn'+(can?' go':'')+'" data-room="'+escH(r.id)+'" type="button"'+(can?'':' disabled')+'>들어가기</button></div>';
+  }).join(''):'<div class="hint" style="margin:0">아직 만든 방이 없어요. 먼저 방을 만들어 볼까요?</div>';
+  $$('#roomList button[data-room]').forEach(b=>b.onclick=()=>sumoJoin(b.dataset.room));
+  const fr=Object.values(board.students||{}).filter(s=>s&&s.online&&s.mode==='sumo'&&s.num).sort((a,b)=>a.num-b.num).map(s=>s.num+'번('+s.team+'모둠)');
+  $('#lobbyFriends').textContent=fr.length?fr.join(', '):'아직 없어요.';
+}
+function sumoCreate(kind){
+  if(!(FB.ok&&FB.joined)){ toast('번호와 모둠을 먼저 골라요.'); return; }
+  ac(); const ref=fref('sumo/rooms').push(), id=ref.key;
+  const r={kind:kind,host:sid(),hostNum:me.num,hostTeam:me.team,teamA:me.team,teamB:0,state:'wait',created:Date.now(),round:0,score:{a:0,b:0},players:{}};
+  r.players[sid()]={side:0,team:me.team,num:me.num};
+  ref.onDisconnect().remove(); fref('sumo/sim/'+id).onDisconnect().remove(); fref('sumo/inputs/'+id).onDisconnect().remove();
+  sumoEnter(id,true); ref.set(r).catch(()=>{ toast('방을 만들지 못했어요. 다시 해 봐요.'); sumoLeave(); });
+}
+$('#mk1v1').onclick=()=>sumoCreate('1v1');
+$('#mkTeam').onclick=()=>sumoCreate('team');
+function sumoJoin(id){
+  if(!(FB.ok&&FB.joined)) return; ac(); const my=sid();
+  roomRef(id).transaction(r=>{
+    if(r===null) return null;
+    if(r.players&&r.players[my]) return r;
+    if(r.state==='count'||r.state==='play') return;
+    r.players=r.players||{}; const arr=Object.values(r.players); let side;
+    if(r.kind!=='team'){ if(arr.length>=2) return; side=1; }
+    else { const ca=arr.filter(p=>+p.side===0).length, cb=arr.filter(p=>+p.side===1).length;
+      if(me.team===r.teamA){ if(ca>=4) return; side=0; }
+      else if(!r.teamB||r.teamB===me.team){ if(cb>=4) return; side=1; r.teamB=me.team; }
+      else return; }
+    r.players[my]={side:side,team:me.team,num:me.num}; return r;
+  },(err,committed,snap)=>{
+    const v=snap&&snap.val();
+    if(!err&&committed&&v&&v.players&&v.players[my]){ roomRef(id).child('players/'+my).onDisconnect().remove(); fref('sumo/inputs/'+id+'/'+my).onDisconnect().remove(); sumoEnter(id,false); }
+    else toast('그 방에는 들어갈 수 없어요. 다른 방을 골라요.');
+  },false);
+}
+function sumoOffNet(){ if(SUMO.net&&SUMO.net.refs) SUMO.net.refs.forEach(r=>{ try{ r.off(); }catch(e){} }); }
+function sumoEnter(id,host){
+  sumoOffNet(); SUMO.net={id:id,host:host,room:null,lastRound:0,lastEnd:0,lastIn:'',refs:[]}; SUMO.inputs={}; SUMO.on=false; SUMO.ended=false; SUMO.p=[]; SUMO.lastPub='';
+  const rr=roomRef(id); rr.on('value',sumoOnRoom); SUMO.net.refs.push(rr);
+  if(host){ const ir=fref('sumo/inputs/'+id); ir.on('value',s=>{ SUMO.inputs=s.val()||{}; }); SUMO.net.refs.push(ir); }
+  else { const sr=fref('sumo/sim/'+id); sr.on('value',sumoOnSim); SUMO.net.refs.push(sr); }
+  SUMO.view='online'; sumoPanels();
+}
+function sumoLeave(){
+  const n=SUMO.net; if(!n) return; sumoOffNet(); SUMO.net=null; SUMO.on=false; SUMO.inputs={}; SUMO.pad={};
+  if(FB.ok){ const my=sid();
+    if(n.host){ ['sumo/rooms/','sumo/sim/','sumo/inputs/'].forEach(p=>{ const r=fref(p+n.id); try{ r.onDisconnect().cancel(); }catch(e){} r.remove().catch(()=>{}); }); }
+    else { const pr=roomRef(n.id).child('players/'+my), ir=fref('sumo/inputs/'+n.id+'/'+my); try{ pr.onDisconnect().cancel(); ir.onDisconnect().cancel(); }catch(e){} pr.remove().catch(()=>{}); ir.remove().catch(()=>{}); }
+  }
+  sumoInit(); sumoPanels();
+}
+$('#roomLeave').onclick=()=>{ sumoLeave(); toast('대기실로 돌아왔어요.'); };
+function sumoLayout(r){
+  const team=r.kind==='team'; MAPS.sumo.cm=team?72:36; const A=SUMO.arena;
+  const ps=Object.entries(r.players||{}).map(([id,v])=>({id:id,side:+v.side||0,num:+v.num||0})).sort((a,b)=>(a.side-b.side)||(a.num-b.num)||(a.id<b.id?-1:1));
+  const out=[];
+  [0,1].forEach(s=>{ const L=ps.filter(p=>p.side===s); L.forEach((p,i)=>{ const y=A.y+A.s*(i+0.5)/L.length, x=team?(s===0?A.x+A.s*0.2:A.x+A.s*0.8):(s===0?300:600); out.push(sumoBody(p.id,s,x,y,s===0?0:180,p.num+'번')); }); });
+  SUMO.p=out; SUMO.ended=false; SUMO.lastPub='';
+}
+function sumoOnRoom(s){
+  const n=SUMO.net; if(!n) return; const r=s.val();
+  if(!r||!r.players||!r.players[sid()]){ if(!n.seen) return; const host=n.host; sumoLeave(); toast(host?'방이 닫혔어요.':(r?'방에서 나왔어요.':'방장이 나가서 방이 닫혔어요. 대기실로 돌아왔어요.')); return; }
+  n.seen=true; n.room=r;
+  if(r.state==='wait'){ sumoLayout(r); SUMO.on=false; }
+  else if(r.state==='count'){ if(r.round!==n.lastRound){ n.lastRound=r.round; sumoLayout(r); SUMO.on=false; sumoCountdown(); } }
+  else if(r.state==='play'){ SUMO.on=true; }
+  else if(r.state==='end'){ SUMO.on=false; SUMO.ended=true; if(r.endT&&r.endT!==n.lastEnd){ n.lastEnd=r.endT; sumoShowEnd(r); } }
+  if(n.host){
+    if(r.state==='play'){ SUMO.p.forEach(p=>{ if(!r.players[p.id]) p.out=true; }); sumoCheckAlive(); }
+    if(r.kind==='team'&&r.teamB&&r.state!=='play'&&r.state!=='count'&&!Object.values(r.players).some(p=>+p.side===1)) roomRef(n.id).child('teamB').set(0).catch(()=>{});
+    sumoPublish(true);
+  }
+  renderRoom();
+}
+function sumoOnSim(s){
+  const n=SUMO.net; if(!n) return; const v=s.val(); if(!v||!v.p) return;
+  for(const id in v.p){ const a=v.p[id]; let b=SUMO.p.find(x=>x.id===id);
+    if(!b){ const pr=n.room&&n.room.players&&n.room.players[id]; if(!pr) continue; b=sumoBody(id,+pr.side||0,a[0],a[1],a[2],(+pr.num||'')+'번'); SUMO.p.push(b); }
+    b.tx=a[0]; b.ty=a[1]; b.th=a[2]; b.out=!!a[3]; }
+  SUMO.p=SUMO.p.filter(b=>v.p[b.id]);
+}
+function sumoPublish(force){
+  const n=SUMO.net; if(!n||!n.host) return; const now=performance.now(); if(!force&&now-SUMO.pubT<80) return; SUMO.pubT=now;
+  const p={}; SUMO.p.forEach(b=>{ p[b.id]=[Math.round(b.x),Math.round(b.y),Math.round(b.h),b.out?1:0]; });
+  const j=JSON.stringify(p); if(j===SUMO.lastPub) return; SUMO.lastPub=j; fref('sumo/sim/'+n.id).set({p:p}).catch(()=>{});
+}
+function sumoSendInput(){
+  const n=SUMO.net; if(!n||n.host) return; const v=(n.room&&n.room.state==='play')?myInput():{f:0,t:0}; const j=v.f+','+v.t;
+  if(j===n.lastIn) return; n.lastIn=j; fref('sumo/inputs/'+n.id+'/'+sid()).set(v).catch(()=>{});
+}
+async function sumoCountdown(){
+  const n=SUMO.net, round=n.lastRound; try{ document.activeElement&&document.activeElement.blur(); }catch(e){}
+  for(const t of ['3','2','1']){ big(t,900); tone(660,0.12,'square',0.05); await sleepRaw(900); if(SUMO.net!==n||n.lastRound!==round) return; }
+  big('시작!',800); tone(990,0.25,'square',0.06);
+  if(n.host&&n.room&&n.room.state==='count') roomRef(n.id).update({state:'play'}).catch(()=>{});
+}
+function sumoHostEnd(win){
+  const n=SUMO.net, r=n.room||{}, sc={a:(r.score&&r.score.a)||0,b:(r.score&&r.score.b)||0};
+  if(win===0) sc.a++; else if(win===1) sc.b++;
+  sumoPublish(true); roomRef(n.id).update({state:'end',winner:win,score:sc,endT:Date.now()}).catch(()=>{});
+}
+function sumoShowEnd(r){
+  const w=r.winner, mine=r.players[sid()], my=mine?+mine.side:-2; let msg;
+  if(w==null||w<0) msg='비겼어요!';
+  else { const nm=r.kind==='team'?((w===0?r.teamA:r.teamB)+'모둠'):SIDE_NAME[w]; msg='<span style="color:'+(w===0?'#9cc3ff':'#ffb1aa')+'">'+nm+'</span> 승리!'+(my===w?'<br><span style="font-size:28px">우리가 이겼어요!</span>':''); }
+  if(my===w) okTone(); else tone(392,0.3,'triangle',0.06);
+  big(msg,3000);
+}
+$('#roomStart').onclick=()=>{
+  const n=SUMO.net; if(!n||!n.host||!n.room) return; const r=n.room, pl=Object.values(r.players||{});
+  if(!pl.some(p=>+p.side===0)||!pl.some(p=>+p.side===1)){ toast('상대가 들어와야 시작할 수 있어요.'); return; }
+  if(r.state==='count'||r.state==='play') return; ac();
+  roomRef(n.id).update({state:'count',round:(r.round||0)+1,winner:null}).catch(()=>{});
+};
+function renderRoom(){
+  const n=SUMO.net; if(!n||!n.room) return; const r=n.room;
+  const pl=Object.entries(r.players||{}).map(([id,v])=>Object.assign({id:id},v)).sort((a,b)=>a.num-b.num);
+  $('#roomTitle').textContent=r.kind==='team'?('모둠 팀전: '+r.teamA+'모둠 vs '+(r.teamB?r.teamB+'모둠':'?모둠')):('1:1 대결 ('+r.hostNum+'번의 방)');
+  [0,1].forEach(s=>{ $('#side'+s).innerHTML=pl.filter(p=>+p.side===s).map(p=>'<div class="pl'+(p.id===sid()?' me':'')+'"><span>'+escH(p.num)+'번'+(p.id===r.host?' (방장)':'')+(p.id===sid()?' 나':'')+'</span></div>').join('')||'<div class="hint" style="margin:0">기다리는 중</div>'; });
+  $('#sideT0').textContent=r.kind==='team'?(r.teamA+'모둠'):''; $('#sideT1').textContent=r.kind==='team'&&r.teamB?(r.teamB+'모둠'):'';
+  $('#rs1').textContent=(r.score&&r.score.a)||0; $('#rs2').textContent=(r.score&&r.score.b)||0;
+  const both=pl.some(p=>+p.side===0)&&pl.some(p=>+p.side===1), st=r.state;
+  $('#roomStart').hidden=!n.host; $('#roomStart').disabled=!both||st==='count'||st==='play'; $('#roomStart').textContent=st==='end'?'▶ 한 판 더':'▶ 경기 시작';
+  $('#roomMsg').textContent=st==='play'?'경기 중! 상대를 경기장 밖으로 밀어내요.':(st==='count'?'곧 시작해요!':(!both?(r.kind==='team'?'다른 모둠 친구가 들어오기를 기다려요. 같은 모둠 친구도 들어올 수 있어요.':'상대가 들어오기를 기다려요.'):(n.host?'준비되면 [경기 시작]을 눌러요.':'방장이 경기를 시작하기를 기다려요.')));
+  const ms=r.players[sid()]?(+r.players[sid()].side||0):0; $('#myColor').textContent='내 아이온: '+SIDE_NAME[ms]; $('#myColor').style.color=SIDE_COL[ms];
+}
+$$('#dpad button').forEach(b=>{ const k=b.dataset.k; const on=e=>{ e.preventDefault(); ac(); SUMO.pad[k]=true; b.classList.add('on'); try{ b.setPointerCapture(e.pointerId); }catch(err){} }; const off=()=>{ SUMO.pad[k]=false; b.classList.remove('on'); }; b.addEventListener('pointerdown',on); ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,off)); b.addEventListener('contextmenu',e=>e.preventDefault()); });
 
 /* ───────── 키보드 ───────── */
 window.addEventListener('keydown',e=>{ if(typeof ctl!=='undefined'&&ctl.lock) return; if(mode!=='joy'&&mode!=='sumo') return; if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')) return; joy.keys[e.code]=true; joy.keys[e.key]=true; if(e.key&&e.key.startsWith('Arrow')) e.preventDefault(); ac(); });
@@ -649,7 +874,7 @@ function fillMapSel(){ const s=$('#mapSel'); s.innerHTML=Object.entries(MAPS).fi
 const MAT2_HOME={x:176,y:788,h:0};
 function chooseMap(k,keepMission){ if(k==='mat2'&&mode!=='card') MAPS.mat2.start={...MAT2_HOME}; curMap=k; $('#mapSel').value=MAPS[k].hidden?'':k; $('#upLbl').style.display=k==='mine'?'':'none'; placeHome(); if(!keepMission){ if(mode==='block') blockMission(); else if(mode==='joy') joyReset(); } }
 $('#mapSel').onchange=e=>{ if(mode==='card'){ e.target.value='mat2'; toast('카드 길 찾기는 놀이 자료 2에서 해요.'); return; } stopProgram(true); chooseMap(e.target.value); };
-$('#homeBtn').onclick=()=>{ if(mode==='sumo'){ sumoInit(); return; } if(RUN||card.running) return; placeHome(); };
+$('#homeBtn').onclick=()=>{ if(mode==='sumo'){ if(SUMO.net){ toast('온라인 대전에서는 방장이 경기를 시작하면 제자리로 돌아가요.'); return; } sumoInit(); SUMO.on=false; return; } if(RUN||card.running) return; placeHome(); };
 $('#rotL').onclick=()=>{ if(RUN||card.running) return; R.h-=15; };
 $('#rotR').onclick=()=>{ if(RUN||card.running) return; R.h+=15; };
 $('#trailBtn').onclick=()=>{ trail=[{x:R.x,y:R.y}]; const L=layerFor(curMap).pen; L.getContext('2d').clearRect(0,0,L.width,L.height); toast('지나간 길과 펜 그림을 지웠어요.'); };
@@ -676,7 +901,8 @@ function drawDot(a,b){ const L=layerFor(curMap).draw.getContext('2d'); const k=p
 let mode='block';
 function setMode(m){
   if(m===mode) return;
-  stopProgram(true); if(card.tok) card.tok.stop=true; buzzOff(); joy.keys={}; SUMO.on=false;
+  if(mode==='sumo'&&SUMO.net) sumoLeave();
+  stopProgram(true); if(card.tok) card.tok.stop=true; buzzOff(); joy.keys={}; SUMO.on=false; SUMO.pad={};
   mode=m; $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.m===m)); fbMine({mode:m}); $$('.mode').forEach(x=>x.classList.toggle('on',x.id==='m-'+m));
   const sb=$('#stageBar'); ['#mapSel','#rotL','#rotR','#trailBtn','#penBtn','#drawBtn'].forEach(s=>$(s).style.display=m==='sumo'?'none':'');
   if(drawMode && m==='sumo'){ drawMode=false; $('#drawBtn').classList.remove('on'); $('#drawTools').classList.remove('on'); }
@@ -684,7 +910,7 @@ function setMode(m){
   if(m==='block'){ chooseMap(curMap==='sumo'?'mat3':(curMap||'mat3')); blockMission(); setTimeout(()=>{ try{ Blockly.svgResize(ws); }catch(e){} },30); }
   if(m==='card'){ cardSetup(); readyUI(); renderSeq(); }
   if(m==='joy'){ $$('#ledSeg button').forEach(x=>x.classList.toggle('on',x.dataset.v==='off')); chooseMap('mat4'); joyReset(); }
-  if(m==='sumo'){ curMap='sumo'; setMission(null); sumoInit(); $('#upLbl').style.display='none'; }
+  if(m==='sumo'){ curMap='sumo'; setMission(null); sumoInit(); $('#upLbl').style.display='none'; sumoPanels(); }
 }
 $$('.tab').forEach(t=>t.onclick=()=>setMode(t.dataset.m));
 
@@ -695,6 +921,7 @@ const ROOM=((qs.get('room')||'main').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,20))|
 const FBASE='artemis6/aion-'+ROOM+'/sim';
 const lsx={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 let me={team:Number(lsx.get('aion_team'))||0,num:Number(lsx.get('aion_num'))||0};
+{ const m=(qs.get('as')||'').match(/^(\d{1,2})-(\d{1,2})$/); if(m) me={num:+m[1],team:+m[2]}; }  /* 시험용: 주소에 ?as=번호-모둠 */
 const sid=()=>'t'+me.team+'n'+me.num;
 const FB={ok:false,db:null,joined:false,since:Date.now()};
 const BADGE={grandma:'할머니 댁',pharmacy:'약국',card1:'카드 ➊',card2:'카드 ➋',card3:'카드 ➊+➋',road:'도로 규칙',road2:'도로 도착'};
@@ -709,23 +936,25 @@ async function fbInit(){
     firebase.initializeApp(FB_CONFIG); await firebase.auth().signInAnonymously();
     FB.db=firebase.database(); FB.ok=true;
     FB.db.ref('.info/connected').on('value',s=>setNet(s.val()===true));
-  }catch(e){ FB.ok=false; setNet(false,true); return; }
+  }catch(e){ FB.ok=false; FB.failed=true; setNet(false,true); renderLobby(); return; }
   $('#meBtn').hidden=false; $('#boardBtn').hidden=false;
   if(qs.get('t')==='q7m4') $('#boardReset').hidden=false;
-  fref('students').on('value',s=>{ board.students=s.val()||{}; renderBoard(); });
+  fref('students').on('value',s=>{ board.students=s.val()||{}; renderBoard(); renderLobby(); });
+  fref('sumo/rooms').on('value',s=>{ SUMO.rooms=s.val()||{}; renderLobby(); });
   fref('clear').on('value',s=>{ board.clear=s.val()||{}; renderBoard(); });
   fref('control').on('value',s=>applyControl(s.val()));
   fref('snapReq').on('value',s=>{ const v=s.val(); if(snapFirst){ snapFirst=false; lastSnap=v; return; } if(v&&v!==lastSnap){ lastSnap=v; sendSnap(); } });
-  fref('feed').limitToLast(25).on('child_added',s=>{ const v=s.val()||{}; feedItems.unshift(v); feedItems=feedItems.slice(0,25); renderFeed(); if(typeof v.t==='number'&&v.t>FB.since-5000&&!(v.team===me.team&&v.num===me.num)) ticker(v.team+'모둠 '+v.num+'번: '+v.label+' 성공!'); });
+  fref('feed').limitToLast(25).on('child_added',s=>{ const v=s.val()||{}; feedItems.unshift(v); feedItems=feedItems.slice(0,25); renderFeed(); if(typeof v.t==='number'&&v.t>FB.since-5000&&!(v.team===me.team&&v.num===me.num)) ticker(v.num+'번('+v.team+'모둠): '+v.label+' 성공!'); });
   if(me.team&&me.num) joinRoom(); else openJoin();
+  renderLobby();
 }
-function joinRoom(){ if(!FB.ok) return; FB.joined=true; $('#meBtn').textContent=me.team+'모둠 '+me.num+'번 (바꾸기)'; const s=fref('students/'+sid()); s.onDisconnect().update({online:false}); s.update({team:me.team,num:me.num,online:true,mode:mode,seen:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{}); }
+function joinRoom(){ if(!FB.ok) return; FB.joined=true; $('#meBtn').textContent=me.num+'번 ('+me.team+'모둠) 바꾸기'; renderLobby(); const s=fref('students/'+sid()); s.onDisconnect().update({online:false}); s.update({team:me.team,num:me.num,online:true,mode:mode,seen:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{}); }
 function openJoin(){
   const pt=$('#pickTeam'), pn=$('#pickNum'); pt.textContent=''; pn.textContent=''; let tm=me.team, nm=me.num;
-  const upd=()=>{ $('#joinBtn').disabled=!(tm&&nm); $('#joinBtn').textContent=(tm&&nm)?(tm+'모둠 '+nm+'번으로 들어가기'):'모둠과 번호를 골라요'; };
+  const upd=()=>{ $('#joinBtn').disabled=!(tm&&nm); $('#joinBtn').textContent=(tm&&nm)?(nm+'번, '+tm+'모둠으로 들어가기'):(nm?'모둠을 골라요':'번호를 골라요'); };
   const mk=(box,n,cur,set)=>{ for(let i=1;i<=n;i++){ const b=document.createElement('button'); b.type='button'; b.textContent=i; b.setAttribute('aria-pressed',i===cur?'true':'false'); b.onclick=()=>{ set(i); [...box.children].forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false')); upd(); }; box.appendChild(b); } };
-  mk(pt,12,tm,v=>tm=v); mk(pn,25,nm,v=>nm=v); upd();
-  $('#joinBtn').onclick=()=>{ if(!(tm&&nm)) return; if(FB.joined&&(tm!==me.team||nm!==me.num)) fref('students/'+sid()).update({online:false}).catch(()=>{}); me={team:tm,num:nm}; lsx.set('aion_team',tm); lsx.set('aion_num',nm); $('#join').hidden=true; joinRoom(); };
+  mk(pn,25,nm,v=>nm=v); mk(pt,12,tm,v=>tm=v); upd();
+  $('#joinBtn').onclick=()=>{ if(!(tm&&nm)) return; if(SUMO.net) sumoLeave(); if(FB.joined&&(tm!==me.team||nm!==me.num)) fref('students/'+sid()).update({online:false}).catch(()=>{}); me={team:tm,num:nm}; lsx.set('aion_team',tm); lsx.set('aion_num',nm); $('#join').hidden=true; joinRoom(); };
   $('#join').hidden=false;
 }
 $('#joinSkip').onclick=()=>{ $('#join').hidden=true; };
@@ -739,11 +968,11 @@ const MODEN={block:'블록 코딩',card:'카드 길 찾기',joy:'조이스틱',s
 function renderBoard(){
   if($('#board').hidden) return;
   const keys=new Set([...Object.keys(board.students),...Object.keys(board.clear)]);
-  const rows=[...keys].map(k=>{ const s=board.students[k]||{}; const m=k.match(/^t(\d+)n(\d+)$/)||[0,0,0]; return {k:k,team:s.team||+m[1],num:s.num||+m[2],on:!!s.online,mode:s.mode,cl:board.clear[k]||{}}; }).filter(r=>r.team&&r.num).sort((a,b)=>(a.team-b.team)||(a.num-b.num));
+  const rows=[...keys].map(k=>{ const s=board.students[k]||{}; const m=k.match(/^t(\d+)n(\d+)$/)||[0,0,0]; return {k:k,team:s.team||+m[1],num:s.num||+m[2],on:!!s.online,mode:s.mode,cl:board.clear[k]||{}}; }).filter(r=>r.team&&r.num).sort((a,b)=>(a.num-b.num)||(a.team-b.team));
   const total=rows.reduce((n,r)=>n+Object.keys(r.cl).length,0);
-  $('#boardList').innerHTML=(rows.length?'<div class="hint" style="margin-top:0">접속 '+rows.filter(r=>r.on).length+'명, 성공한 미션 모두 '+total+'개</div>':'<div class="hint">아직 들어온 친구가 없어요.</div>')+rows.map(r=>'<div class="srow'+(r.on?' on':'')+'"><span class="who"><i></i>'+r.team+'모둠 '+r.num+'번</span><span class="badges">'+(Object.keys(r.cl).length?Object.keys(r.cl).map(c=>'<span class="bdg'+(c==='road'||c==='grandma'?' g':'')+'">★ '+escH(BADGE[c]||c)+'</span>').join(''):'<span class="hint" style="margin:0;font-size:13px">'+(r.on&&r.mode?escH(MODEN[r.mode]||'')+' 하는 중':'')+'</span>')+'</span></div>').join('');
+  $('#boardList').innerHTML=(rows.length?'<div class="hint" style="margin-top:0">접속 '+rows.filter(r=>r.on).length+'명, 성공한 미션 모두 '+total+'개</div>':'<div class="hint">아직 들어온 친구가 없어요.</div>')+rows.map(r=>'<div class="srow'+(r.on?' on':'')+'"><span class="who"><i></i>'+r.num+'번 ('+r.team+'모둠)</span><span class="badges">'+(Object.keys(r.cl).length?Object.keys(r.cl).map(c=>'<span class="bdg'+(c==='road'||c==='grandma'?' g':'')+'">★ '+escH(BADGE[c]||c)+'</span>').join(''):'<span class="hint" style="margin:0;font-size:13px">'+(r.on&&r.mode?escH(MODEN[r.mode]||'')+' 하는 중':'')+'</span>')+'</span></div>').join('');
 }
-function renderFeed(){ $('#feed').innerHTML=feedItems.length?feedItems.map(v=>'<div>'+escH(v.team)+'모둠 '+escH(v.num)+'번: '+escH(v.label||'')+' 성공</div>').join(''):'아직 없어요.'; }
+function renderFeed(){ $('#feed').innerHTML=feedItems.length?feedItems.map(v=>'<div>'+escH(v.num)+'번('+escH(v.team)+'모둠): '+escH(v.label||'')+' 성공</div>').join(''):'아직 없어요.'; }
 let tickT=null;
 function ticker(msg){ const el=$('#ticker'); el.textContent=msg; el.style.display='block'; clearTimeout(tickT); tickT=setTimeout(()=>el.style.display='none',3500); }
 
@@ -762,11 +991,12 @@ function applyControl(c){
   if(ctl.lock){ $('#lockScr').hidden=false; $('#lockMsg').textContent=ctl.lockMsg||''; stopAll(); } else $('#lockScr').hidden=true;
   ctlFirst=false;
 }
-function stopAll(){ stopProgram(true); if(card.tok) card.tok.stop=true; joy.keys={}; joy.drag=false; joySet(0,0); SUMO.on=false; R.v=0; R.w=0; buzzOff(); }
+function stopAll(){ stopProgram(true); if(card.tok) card.tok.stop=true; joy.keys={}; joy.drag=false; joySet(0,0); SUMO.pad={}; if(!SUMO.net) SUMO.on=false; R.v=0; R.w=0; buzzOff(); }
 function showNotice(txt){ $('#noticeTxt').textContent=txt; $('#noticeBar').hidden=false; tone(1319,0.12,'triangle',0.08); setTimeout(()=>tone(1760,0.2,'triangle',0.07),110); }
 $('#noticeX').onclick=()=>{ $('#noticeBar').hidden=true; };
 function codeSummary(){
   if(mode==='card') return card.seq.length?('카드: '+card.seq.map(c=>CARD_INFO[c].t).join(', ')):'';
+  if(mode==='sumo'){ const n=SUMO.net; if(!n||!n.room) return '씨름: 대기실'; const r=n.room; return '씨름 '+(r.kind==='team'?('팀전 '+r.teamA+'모둠 vs '+(r.teamB||'?')+'모둠'):'1:1')+' '+({wait:'기다리는 중',count:'시작 준비',play:'경기 중',end:'경기 끝'}[r.state]||'')+' (파랑 '+((r.score&&r.score.a)||0)+' : '+((r.score&&r.score.b)||0)+' 빨강)'+(n.host?', 방장':''); }
   if(mode!=='block'||!ws) return '';
   try{
     const out=[];
@@ -775,7 +1005,7 @@ function codeSummary(){
     return out.join(', ').replace(/\[, /g,'[ ').replace(/, \]/g,' ]').slice(0,240);
   }catch(e){ return ''; }
 }
-setInterval(()=>{ if(!FB.ok||!FB.joined) return; const st={mode:mode,map:curMap,run:!!(RUN||card.running),code:codeSummary()}; const j=JSON.stringify(st); if(j===lastRep) return; lastRep=j; fbMine(st); },3000);
+setInterval(()=>{ if(!FB.ok||!FB.joined) return; const st={mode:mode,map:curMap,run:!!(RUN||card.running||(mode==='sumo'&&SUMO.on)),code:codeSummary()}; const j=JSON.stringify(st); if(j===lastRep) return; lastRep=j; fbMine(st); },3000);
 function sendSnap(){ if(!FB.ok||!FB.joined) return; try{ const W=360, H=Math.max(1,Math.round(W*cv.height/cv.width)); const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').drawImage(cv,0,0,W,H); fref('snap/'+sid()).set({img:c.toDataURL('image/jpeg',0.6),t:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{}); }catch(e){} }
 
 /* ───────── 시작 ───────── */
