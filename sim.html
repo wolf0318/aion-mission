@@ -505,7 +505,7 @@ const EXAMPLES={
   mission:{map:'mat3',top:chain([['aion_start'],['aion_move',{DIR:'fwd',SPD:'50',TIME:'6'}],['aion_move',{DIR:'spinL',SPD:'50',TIME:'5'}],['aion_move',{DIR:'fwd',SPD:'50',TIME:'6'}]])},
   pharmacy:{map:'mat2',top:chain([['aion_start'],['aion_move',{DIR:'fwd',SPD:'50',TIME:'3'}],['aion_move',{DIR:'spinL',SPD:'50',TIME:'3'}],['aion_move',{DIR:'fwd',SPD:'50',TIME:'3'}]])},
   circle:{map:'paper',pen:true,top:chain([['aion_start'],['pen_set',{P:'down'}],['aion_move',{DIR:'spinL',SPD:'50',TIME:'10'}],['aion_move',{DIR:'left',SPD:'60',TIME:'10'}]])},
-  patrol:{map:'paper',pen:true,top:chain([['aion_start'],['pen_set',{P:'down'}],['loop_n',{N:4},null,chain([['aion_move',{DIR:'fwd',SPD:'50',TIME:'3'}],['led_on',{C:'#2f7bff'}],['aion_move',{DIR:'spinR',SPD:'50',TIME:'2'}],['led_off']])]])},
+  patrol:{map:'paper',pen:true,top:chain([['aion_start'],['pen_set',{P:'down'}],['loop_n',{N:4},chain([['aion_move',{DIR:'fwd',SPD:'50',TIME:'3'}],['led_on',{C:'#2f7bff'}],['aion_move',{DIR:'spinR',SPD:'50',TIME:'2'}],['led_off']])]])},
   empty:{top:blk('aion_start')}
 };
 function loadTop(top){ const st={blocks:{languageVersion:0,blocks:[Object.assign({x:40,y:40},top)]}}; Blockly.serialization.workspaces.load(st,ws); }
