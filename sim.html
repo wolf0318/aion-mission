@@ -120,6 +120,7 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
 .side.a .sh{color:#2463d6}.side.b .sh{color:#d6372c}
 .pl{font-weight:700;font-size:15px;padding:2px 0}
 .pl.me span{background:#ffe680;border-radius:6px;padding:1px 6px}
+.pl.empty{color:#9aa7b6;font-weight:600}
 .ctlrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .dpad{display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,50px);gap:6px;touch-action:none;user-select:none;-webkit-user-select:none}
 .dpad button{border:1px solid var(--line);border-radius:12px;background:#fff;font-size:24px;font-weight:800;cursor:pointer;touch-action:none;color:var(--ink)}
@@ -233,7 +234,7 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
         <h2>자리 뺏기 씨름</h2>
         <div id="sumoLobby">
           <div class="hint" id="lobbyMsg">상대 아이온을 경기장 밖으로 밀어내면 이겨요.</div>
-          <div class="row"><button class="btn go" id="mk1v1" type="button">1:1 방 만들기</button><button class="btn go" id="mkTeam" type="button">모둠 팀전 방 만들기</button></div>
+          <div class="row"><button class="btn go" id="mk1v1" type="button">1:1 방 만들기</button><button class="btn go" id="mkTeam" type="button">모둠 팀전 방 만들기 (최대 4 대 4)</button></div>
           <div class="lbl" style="margin-top:10px">들어갈 수 있는 방</div>
           <div class="roomlist" id="roomList"></div>
           <div class="lbl">대기실에 있는 친구</div>
@@ -242,8 +243,8 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
         <div id="sumoRoom" hidden>
           <div style="font-size:18px;font-weight:800;color:var(--navy);margin:2px 0 4px" id="roomTitle"></div>
           <div class="sides">
-            <div class="side a"><div class="sh">파랑 <span id="sideT0"></span></div><div id="side0"></div></div>
-            <div class="side b"><div class="sh">빨강 <span id="sideT1"></span></div><div id="side1"></div></div>
+            <div class="side a"><div class="sh">파랑 <span id="sideT0"></span> <small id="sideN0"></small></div><div id="side0"></div></div>
+            <div class="side b"><div class="sh">빨강 <span id="sideT1"></span> <small id="sideN1"></small></div><div id="side1"></div></div>
           </div>
           <div class="score" style="font-size:26px;margin:4px 0"><span class="p1">파랑 <span id="rs1">0</span></span><span>:</span><span class="p2"><span id="rs2">0</span> 빨강</span></div>
           <div class="hint" id="roomMsg" style="margin:4px 0 8px;font-weight:700;color:var(--ink)"></div>
@@ -732,9 +733,9 @@ function renderLobby(){
   const rooms=Object.entries(SUMO.rooms||{}).map(([id,r])=>Object.assign({id:id},r)).filter(r=>r&&r.players&&!(r.created&&now-r.created>3*3600000)).sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,20);
   $('#roomList').innerHTML=rooms.length?rooms.map(r=>{
     const pl=Object.values(r.players||{}), ca=pl.filter(p=>+p.side===0).length, cb=pl.filter(p=>+p.side===1).length;
-    const title=r.kind==='team'?(r.teamA+'모둠 vs '+(r.teamB?r.teamB+'모둠':'?모둠')+' 팀전'):(r.hostNum+'번의 1:1 방');
+    const title=r.kind==='team'?(r.teamA+'모둠 vs '+(r.teamB?r.teamB+'모둠':'?모둠')+' 팀전 (4 대 4)'):(r.hostNum+'번의 1:1 방');
     const playing=r.state==='count'||r.state==='play', can=ok&&!playing&&sumoCanJoin(r);
-    let sub=playing?'경기 중이에요':(r.kind==='team'?('파랑 '+ca+'명 : 빨강 '+cb+'명 (모둠당 4명까지)'):(pl.length>=2?'자리가 꽉 찼어요':'상대를 기다려요'));
+    let sub=playing?'경기 중이에요':(r.kind==='team'?('파랑 '+ca+'/4명 : 빨강 '+cb+'/4명'+(ca>=4&&cb>=4?', 자리가 꽉 찼어요':'')):(pl.length>=2?'자리가 꽉 찼어요':'상대를 기다려요'));
     if(ok&&!playing&&!can&&r.kind==='team') sub+=', 우리 모둠은 들어갈 수 없어요';
     return '<div class="ritem"><div><b>'+escH(title)+'</b><div class="sub">'+escH(sub)+'</div></div><button class="btn'+(can?' go':'')+'" data-room="'+escH(r.id)+'" type="button"'+(can?'':' disabled')+'>들어가기</button></div>';
   }).join(''):'<div class="hint" style="margin:0">아직 만든 방이 없어요. 먼저 방을 만들어 볼까요?</div>';
@@ -853,13 +854,14 @@ $('#roomStart').onclick=()=>{
 function renderRoom(){
   const n=SUMO.net; if(!n||!n.room) return; const r=n.room;
   const pl=Object.entries(r.players||{}).map(([id,v])=>Object.assign({id:id},v)).sort((a,b)=>a.num-b.num);
-  $('#roomTitle').textContent=r.kind==='team'?('모둠 팀전: '+r.teamA+'모둠 vs '+(r.teamB?r.teamB+'모둠':'?모둠')):('1:1 대결 ('+r.hostNum+'번의 방)');
-  [0,1].forEach(s=>{ $('#side'+s).innerHTML=pl.filter(p=>+p.side===s).map(p=>'<div class="pl'+(p.id===sid()?' me':'')+'"><span>'+escH(p.num)+'번'+(p.id===r.host?' (방장)':'')+(p.id===sid()?' 나':'')+'</span></div>').join('')||'<div class="hint" style="margin:0">기다리는 중</div>'; });
+  $('#roomTitle').textContent=r.kind==='team'?('모둠 팀전 (최대 4 대 4): '+r.teamA+'모둠 vs '+(r.teamB?r.teamB+'모둠':'?모둠')):('1:1 대결 ('+r.hostNum+'번의 방)');
+  const cap=r.kind==='team'?4:1;
+  [0,1].forEach(s=>{ const L=pl.filter(p=>+p.side===s); let h=L.map(p=>'<div class="pl'+(p.id===sid()?' me':'')+'"><span>'+escH(p.num)+'번'+(p.id===r.host?' (방장)':'')+(p.id===sid()?' 나':'')+'</span></div>').join(''); for(let k=L.length;k<cap;k++) h+='<div class="pl empty">빈자리</div>'; $('#side'+s).innerHTML=h; $('#sideN'+s).textContent=r.kind==='team'?(L.length+'/4'):''; });
   $('#sideT0').textContent=r.kind==='team'?(r.teamA+'모둠'):''; $('#sideT1').textContent=r.kind==='team'&&r.teamB?(r.teamB+'모둠'):'';
   $('#rs1').textContent=(r.score&&r.score.a)||0; $('#rs2').textContent=(r.score&&r.score.b)||0;
   const both=pl.some(p=>+p.side===0)&&pl.some(p=>+p.side===1), st=r.state;
   $('#roomStart').hidden=!n.host; $('#roomStart').disabled=!both||st==='count'||st==='play'; $('#roomStart').textContent=st==='end'?'▶ 한 판 더':'▶ 경기 시작';
-  $('#roomMsg').textContent=st==='play'?'경기 중! 상대를 경기장 밖으로 밀어내요.':(st==='count'?'곧 시작해요!':(!both?(r.kind==='team'?'다른 모둠 친구가 들어오기를 기다려요. 같은 모둠 친구도 들어올 수 있어요.':'상대가 들어오기를 기다려요.'):(n.host?'준비되면 [경기 시작]을 눌러요.':'방장이 경기를 시작하기를 기다려요.')));
+  $('#roomMsg').textContent=st==='play'?'경기 중! 상대를 경기장 밖으로 밀어내요.':(st==='count'?'곧 시작해요!':(!both?(r.kind==='team'?'다른 모둠 친구가 들어오기를 기다려요. 같은 모둠 친구도 4명까지 들어올 수 있어요.':'상대가 들어오기를 기다려요.'):(n.host?'준비되면 [경기 시작]을 눌러요.':'방장이 경기를 시작하기를 기다려요.')));
   const ms=r.players[sid()]?(+r.players[sid()].side||0):0; $('#myColor').textContent='내 아이온: '+SIDE_NAME[ms]; $('#myColor').style.color=SIDE_COL[ms];
 }
 $$('#dpad button').forEach(b=>{ const k=b.dataset.k; const on=e=>{ e.preventDefault(); ac(); SUMO.pad[k]=true; b.classList.add('on'); try{ b.setPointerCapture(e.pointerId); }catch(err){} }; const off=()=>{ SUMO.pad[k]=false; b.classList.remove('on'); }; b.addEventListener('pointerdown',on); ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,off)); b.addEventListener('contextmenu',e=>e.preventDefault()); });
