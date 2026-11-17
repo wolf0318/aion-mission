@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>아이온 시뮬레이터 관리</title>
+<style>
+:root{--bg:#eef2f7;--ink:#1d2733;--muted:#5b6b7b;--line:#d3dbe5;--navy:#1f3a5f;--green:#2e9e44;--red:#e04a3f;--panel:#fff}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Malgun Gothic','맑은 고딕','Noto Sans KR',sans-serif}
+header{background:var(--navy);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header h1{font-size:20px;margin:0}
+.net{font-size:14px}
+main{padding:14px 16px;display:grid;grid-template-columns:minmax(300px,390px) 1fr;gap:14px;align-items:start}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
+h2{font-size:17px;margin:0 0 10px;color:var(--navy)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;color:var(--ink)}
+.btn.big{font-size:18px;padding:12px 16px}
+.btn.red{background:var(--red);border-color:var(--red);color:#fff}
+.btn.go{background:var(--green);border-color:var(--green);color:#fff}
+.btn.navy{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn.armed{background:#7a1010;border-color:#7a1010;color:#fff}
+input[type=text],select{font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;min-width:0;flex:1}
+.tg{display:flex;gap:6px;flex-wrap:wrap}
+.tg button{border:2px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-weight:700;cursor:pointer;color:var(--muted)}
+.tg button.on{border-color:var(--green);background:#e8f8ec;color:#1e7b39}
+.lockst{font-weight:700;color:var(--red)}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid #eef1f5;vertical-align:top}
+th{color:var(--muted);font-size:13px;white-space:nowrap}
+td:first-child{white-space:nowrap;font-weight:700}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#c3ccd7;margin-right:5px}
+.dot.on{background:#2fbf5b}
+.bdg{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;background:#eaf4ff;color:#1f5fae;margin:1px}
+.code{font-size:12px;color:var(--muted);max-width:380px}
+.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:8px}
+.shot{border:1px solid var(--line);border-radius:10px;padding:6px;font-size:13px;font-weight:700}
+.shot img{width:100%;display:block;border-radius:6px;margin-top:4px;cursor:zoom-in}
+.feed{font-size:13px;color:var(--muted);line-height:1.6;max-height:260px;overflow:auto}
+.hint{font-size:13px;color:var(--muted);line-height:1.5}
+.gate{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:50;padding:16px}
+.gate form{background:#fff;border:1px solid var(--line);border-radius:18px;padding:24px;width:min(360px,100%);text-align:center}
+.gate input{width:100%;font-size:26px;text-align:center;letter-spacing:8px;border:2px solid var(--line);border-radius:12px;padding:8px;margin:12px 0}
+.gate .msg{min-height:22px;color:var(--red);font-weight:700;margin-top:8px}
+.zoom{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:60;cursor:zoom-out;padding:16px}
+.zoom img{max-width:94vw;max-height:90vh;border-radius:10px;background:#fff}
+</style>
+</head>
+<body>
+<div class="gate" id="gate"><form id="gform" autocomplete="off">
+  <h1 style="font-size:24px;margin:0 0 6px">시뮬레이터 관리</h1>
+  <p class="hint" style="margin:0">선생님 전용이에요. 아르테미스 관제 센터와 같은 입장 비밀번호를 입력하세요.</p>
+  <input type="password" id="gpin" inputmode="numeric" maxlength="8" autocomplete="off" aria-label="입장 비밀번호">
+  <button class="btn navy" type="submit" style="width:100%">입장</button>
+  <div class="msg" id="gmsg"></div>
+</form></div>
+<header><h1>아이온 코딩 시뮬레이터 관리</h1><span class="net" id="net">연결 중</span><span class="net" id="cnt"></span></header>
+<main>
+  <section>
+    <div class="box">
+      <h2>학생 화면 제어</h2>
+      <div class="row"><button class="btn red big" id="lockBtn" type="button">화면 잠그기</button><button class="btn big" id="unlockBtn" type="button">잠금 풀기</button></div>
+      <div class="row"><span class="lockst" id="lockSt"></span></div>
+      <div class="row"><input type="text" id="lockMsg" value="선생님을 봐 주세요." maxlength="60" aria-label="잠금 화면에 보일 말"></div>
+      <div class="row"><button class="btn navy" id="stopBtn" type="button">모두 멈추기</button><span class="hint">실행 중인 코드와 아이온을 멈춰요.</span></div>
+      <h2 style="margin-top:16px">알림 보내기</h2>
+      <div class="row"><input type="text" id="noticeIn" placeholder="예: 이제 약국 찾아가기 미션을 해요!" maxlength="80" aria-label="알림 내용"><button class="btn go" id="noticeBtn" type="button">보내기</button></div>
+      <h2 style="margin-top:16px">학생에게 보일 활동</h2>
+      <div class="tg" id="tabsTg"><button type="button" data-m="block">블록 코딩</button><button type="button" data-m="card">카드 길 찾기</button><button type="button" data-m="joy">조이스틱 운전</button><button type="button" data-m="sumo">자리 뺏기 씨름</button></div>
+      <p class="hint">초록색 활동만 학생 화면에 보여요. 눌러서 켜고 꺼요.</p>
+      <h2 style="margin-top:16px">모두 같은 화면으로</h2>
+      <div class="row"><select id="goSel" aria-label="보낼 활동"><option value="block">블록 코딩</option><option value="card">카드 길 찾기</option><option value="joy">조이스틱 운전</option><option value="sumo">자리 뺏기 씨름</option></select><button class="btn" id="goBtn" type="button">이 활동으로 보내기</button></div>
+      <div class="row"><select id="mapSel" aria-label="바꿀 지도"><option value="mat3">놀이 자료 3 (할머니 댁)</option><option value="mat2">놀이 자료 2 (길 찾기, 약국)</option><option value="mat4">놀이 자료 4 (도로 운전)</option><option value="ex">소리풍경지도 (예시)</option><option value="a3">소리풍경지도 (A3 빈 지도)</option><option value="paper">흰 종이 (그림 그리기)</option></select><button class="btn" id="mapBtn" type="button">이 지도로 바꾸기</button></div>
+      <p class="hint">지도 바꾸기는 블록 코딩과 조이스틱 화면에 적용돼요.</p>
+      <h2 style="margin-top:16px">정리</h2>
+      <div class="row"><button class="btn" id="resetBtn" type="button">성공 기록과 화면 지우기</button></div>
+      <p class="hint">학생 주소: <b id="stuUrl"></b></p>
+    </div>
+    <div class="box" style="margin-top:14px"><h2>방금 성공한 학생</h2><div class="feed" id="feed">아직 없어요.</div></div>
+  </section>
+  <section>
+    <div class="box"><h2>학생 현황</h2>
+      <div class="tblwrap"><table><thead><tr><th>학생</th><th>지금 하는 것</th><th>성공한 미션</th><th>코드</th></tr></thead><tbody id="tb"></tbody></table></div>
+      <p class="hint" id="empty">아직 들어온 학생이 없어요.</p>
+    </div>
+    <div class="box" style="margin-top:14px"><h2>학생 화면 보기</h2>
+      <div class="row"><button class="btn navy" id="snapBtn" type="button">지금 화면 보기</button><button class="btn" id="autoBtn" type="button">자동 새로 보기: 꺼짐</button></div>
+      <p class="hint">학생 화면의 지도와 아이온이 사진으로 와요. 사진을 누르면 크게 보여요.</p>
+      <div class="shots" id="shots"></div>
+    </div>
+  </section>
+</main>
+<div class="zoom" id="zoom" hidden><img id="zoomImg" alt="학생 화면 크게 보기"></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script>
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const FB_CONFIG={apiKey:'AIzaSyAQnkse4wP-o0pLE3Eyt9G69JdRJB6xzWI',authDomain:'artemis-6.firebaseapp.com',databaseURL:'https://artemis-6-default-rtdb.asia-southeast1.firebasedatabase.app',projectId:'artemis-6',storageBucket:'artemis-6.firebasestorage.app',messagingSenderId:'1686860032',appId:'1:1686860032:web:780e04604f720bcd8f43e5'};
+const qs=new URLSearchParams(location.search);
+const ROOM=((qs.get('room')||'main').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,20))||'main';
+const BASE='artemis6/aion-'+ROOM+'/sim';
+/* 입장 비밀번호: 아르테미스 관제 센터와 같은 비밀번호(코드에는 해시만 있어요) */
+const GATE_H='f5bc1aab8c8f06cf65f84d34f7912be7f8fc31d82283722b982011a4a61edb6e';
+async function gateHash(p){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('artemis6-gate:'+p)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+let gateFails=0, gateUntil=0, started=false;
+function gateOK(){ try{ return sessionStorage.getItem('aion_gate')===GATE_H; }catch(e){ return false; } }
+function unlock(){ $('#gate').hidden=true; if(!started){ started=true; init(); } }
+$('#gform').addEventListener('submit',async e=>{ e.preventDefault(); const msg=$('#gmsg'); if(Date.now()<gateUntil){ msg.textContent='잠시 후 다시 해 보세요.'; return; } const h=await gateHash($('#gpin').value.trim()); if(h===GATE_H){ try{ sessionStorage.setItem('aion_gate',h); }catch(err){} msg.textContent=''; unlock(); return; } gateFails++; $('#gpin').value=''; if(gateFails>=5){ gateFails=0; gateUntil=Date.now()+30000; msg.textContent='5번 틀렸어요. 30초 뒤에 다시 해 보세요.'; } else msg.textContent='비밀번호가 맞지 않아요.'; });
+window.addEventListener('load',()=>{ if(gateOK()) unlock(); else $('#gpin').focus(); });
+
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const BADGE={grandma:'할머니 댁',pharmacy:'약국',card1:'카드 ➊',card2:'카드 ➋',card3:'카드 ➊+➋',road:'도로 규칙',road2:'도로 도착'};
+const MODEN={block:'블록 코딩',card:'카드 길 찾기',joy:'조이스틱',sumo:'씨름'};
+const MAPN={mat2:'놀이 자료 2',mat3:'놀이 자료 3',mat4:'놀이 자료 4',ex:'소리풍경 예시',a3:'A3 빈 지도',paper:'흰 종이',mine:'내 지도 사진',sumo:'경기장'};
+const ALL={block:true,card:true,joy:true,sumo:true};
+let db=null, D={students:{},clear:{},control:{},snap:{}};
+const ref=p=>db.ref(BASE+(p?'/'+p:''));
+async function init(){
+  $('#stuUrl').textContent=location.origin+location.pathname.replace(/[^/]*$/,'')+'sim.html'+(ROOM!=='main'?'?room='+ROOM:'');
+  try{ firebase.initializeApp(FB_CONFIG); await firebase.auth().signInAnonymously(); db=firebase.database(); }
+  catch(e){ $('#net').textContent='연결 안 됨 (새로 고침해 보세요)'; return; }
+  db.ref('.info/connected').on('value',s=>{ $('#net').textContent=s.val()?'● 연결됨':'다시 연결하는 중'; });
+  ref('students').on('value',s=>{ D.students=s.val()||{}; render(); renderShots(); });
+  ref('clear').on('value',s=>{ D.clear=s.val()||{}; render(); });
+  ref('control').on('value',s=>{ D.control=s.val()||{}; renderCtl(); });
+  ref('snap').on('value',s=>{ D.snap=s.val()||{}; renderShots(); });
+  ref('feed').limitToLast(40).on('value',s=>{ const arr=Object.values(s.val()||{}).sort((a,b)=>(b.t||0)-(a.t||0)); $('#feed').innerHTML=arr.length?arr.map(x=>'<div>'+esc(x.team)+'모둠 '+esc(x.num)+'번: '+esc(x.label)+(x.t?' <span style="opacity:.7">('+new Date(x.t).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+')</span>':'')+'</div>').join(''):'아직 없어요.'; });
+}
+function tabsNow(){ return Object.assign({},ALL,D.control.tabs||{}); }
+function renderCtl(){ const c=D.control; $('#lockSt').textContent=c.lock?'지금 학생 화면이 잠겨 있어요.':''; const t=tabsNow(); $$('#tabsTg button').forEach(b=>b.classList.toggle('on',!!t[b.dataset.m])); }
+$('#lockBtn').onclick=()=>{ if(db) ref('control').update({lock:true,lockMsg:$('#lockMsg').value.trim()||'선생님을 봐 주세요.'}); };
+$('#unlockBtn').onclick=()=>{ if(db) ref('control').update({lock:false}); };
+$('#stopBtn').onclick=()=>{ if(db) ref('control/stop').set(Date.now()); };
+$('#noticeBtn').onclick=()=>{ const t=$('#noticeIn').value.trim(); if(!t||!db) return; ref('control/notice').set({text:t,t:Date.now()}); $('#noticeIn').value=''; };
+$('#noticeIn').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#noticeBtn').click(); });
+$$('#tabsTg button').forEach(b=>b.onclick=()=>{ if(!db) return; const t=tabsNow(); t[b.dataset.m]=!t[b.dataset.m]; if(!Object.values(t).some(Boolean)) return; ref('control/tabs').set(t); });
+$('#goBtn').onclick=()=>{ if(!db) return; const m=$('#goSel').value; const t=tabsNow(); if(!t[m]){ t[m]=true; ref('control/tabs').set(t); } ref('control/go').set({mode:m,t:Date.now()}); };
+$('#mapBtn').onclick=()=>{ if(db) ref('control/map').set({key:$('#mapSel').value,t:Date.now()}); };
+let armT=null;
+$('#resetBtn').onclick=()=>{ const b=$('#resetBtn'); if(!b.classList.contains('armed')){ b.classList.add('armed'); b.textContent='한 번 더 누르면 지워요'; armT=setTimeout(()=>{ b.classList.remove('armed'); b.textContent='성공 기록과 화면 지우기'; },4000); return; } clearTimeout(armT); b.classList.remove('armed'); b.textContent='성공 기록과 화면 지우기'; if(!db) return; ['clear','feed','snap','snapReq'].forEach(p=>ref(p).remove()); Object.entries(D.students).forEach(([k,s])=>{ if(!s.online) ref('students/'+k).remove(); }); };
+function rows(){ const keys=new Set([...Object.keys(D.students),...Object.keys(D.clear)]); return [...keys].map(k=>{ const s=D.students[k]||{}; const m=k.match(/^t(\d+)n(\d+)$/)||[0,0,0]; return {k:k,team:s.team||+m[1],num:s.num||+m[2],on:!!s.online,mode:s.mode,map:s.map,run:s.run,code:s.code,cl:D.clear[k]||{}}; }).filter(r=>r.team&&r.num).sort((a,b)=>(b.on-a.on)||(a.team-b.team)||(a.num-b.num)); }
+function render(){
+  const R=rows(); $('#empty').hidden=R.length>0; $('#cnt').textContent='접속 '+R.filter(r=>r.on).length+'명';
+  $('#tb').innerHTML=R.map(r=>'<tr><td><span class="dot'+(r.on?' on':'')+'"></span>'+r.team+'모둠 '+r.num+'번</td><td>'+(r.on?esc(MODEN[r.mode]||'')+((r.map&&(r.mode==='block'||r.mode==='joy'))?'<br><span class="hint">'+esc(MAPN[r.map]||r.map)+'</span>':'')+(r.run?' <b style="color:#2e9e44">실행 중</b>':''):'<span class="hint">나감</span>')+'</td><td>'+(Object.keys(r.cl).map(c=>'<span class="bdg">★ '+esc(BADGE[c]||c)+'</span>').join('')||'<span class="hint">-</span>')+'</td><td class="code">'+esc(r.code||'')+'</td></tr>').join('');
+}
+function renderShots(){ const R=rows().filter(r=>r.on||D.snap[r.k]); $('#shots').innerHTML=R.length?R.map(r=>{ const s=D.snap[r.k]; return '<div class="shot">'+r.team+'모둠 '+r.num+'번'+(s&&s.img?'<img src="'+esc(s.img)+'" alt="'+r.team+'모둠 '+r.num+'번 화면" data-z="1">':'<div class="hint">[지금 화면 보기]를 눌러요</div>')+'</div>'; }).join(''):'<p class="hint">아직 들어온 학생이 없어요.</p>'; }
+$('#snapBtn').onclick=()=>{ if(db) ref('snapReq').set(Date.now()); };
+let autoT=null;
+$('#autoBtn').onclick=()=>{ if(autoT){ clearInterval(autoT); autoT=null; $('#autoBtn').textContent='자동 새로 보기: 꺼짐'; return; } if(db) ref('snapReq').set(Date.now()); autoT=setInterval(()=>{ if(db) ref('snapReq').set(Date.now()); },10000); $('#autoBtn').textContent='자동 새로 보기: 10초마다'; };
+document.addEventListener('click',e=>{ const im=e.target.closest('img[data-z]'); if(im){ $('#zoomImg').src=im.src; $('#zoom').hidden=false; return; } if(e.target.closest('#zoom')) $('#zoom').hidden=true; });
+</script>
+</body>
+</html>
