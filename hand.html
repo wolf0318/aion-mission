@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>아이온 손 인식 카메라</title>
+<style>
+:root{color-scheme:light;--bg:#eef2f7;--ink:#1d2733;--muted:#5b6b7b;--line:#d3dbe5;--navy:#1f3a5f;--blue:#3b5bb5;--green:#2e9e44;--red:#e04a3f}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:'Malgun Gothic','맑은 고딕','Noto Sans KR',sans-serif}
+header{background:var(--navy);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:20px;margin:0}
+.net{font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.net i{width:10px;height:10px;border-radius:50%;background:#9aa7b6;display:inline-block}
+.net.on i{background:#3ddc6f}.net.off i{background:#ff6b5e}
+main{padding:12px 16px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(260px,1fr);gap:12px;align-items:start}
+@media (max-width:760px){main{grid-template-columns:1fr}}
+.box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;min-width:0}
+h2{font-size:18px;margin:0 0 10px;color:var(--navy)}
+.hint{font-size:15px;color:var(--muted);line-height:1.5;margin:6px 0}
+.pick{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.pick button{border:1px solid var(--line);background:#fff;border-radius:12px;padding:14px 0;font-size:22px;font-weight:800;cursor:pointer;color:var(--ink)}
+.pick button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 14px;font:inherit;font-size:16px;font-weight:700;cursor:pointer;color:var(--ink)}
+.btn.go{background:var(--green);border-color:var(--green);color:#fff}
+.btn.big{font-size:22px;padding:16px 22px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+#camWrap{position:relative;background:#1d2733;border-radius:14px;overflow:hidden;aspect-ratio:4/3;display:grid;place-items:center}
+#cam,#ov{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#camWrap.mirror #cam,#camWrap.mirror #ov{transform:scaleX(-1)}
+#camMsg{position:relative;z-index:2;color:#fff;text-align:center;padding:16px;font-size:18px;line-height:1.5}
+#gNow{font-size:46px;font-weight:900;text-align:center;margin:6px 0 2px}
+#gNow .e{font-size:78px;display:block;line-height:1.1}
+#sendSt{text-align:center;font-weight:700;font-size:16px;color:var(--muted);min-height:24px}
+#sendSt.ok{color:var(--green)}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.chip{border:2px solid var(--line);border-radius:12px;padding:6px 2px;text-align:center;font-weight:700;font-size:14px;background:#fff}
+.chip .e{font-size:28px;display:block}
+.chip.on{border-color:var(--blue);background:#e9eefc;color:var(--blue)}
+#me{font-size:20px;font-weight:800}
+</style>
+</head>
+<body>
+<header><h1>아이온 손 인식 카메라</h1><span class="net" id="net"><i></i><span>연결 중</span></span></header>
+<main>
+  <section class="box" id="pickBox">
+    <h2>① 내 번호를 골라요</h2>
+    <p class="hint">컴퓨터에서 고른 번호와 같은 번호를 눌러요. 이 태블릿이 본 손 모양이 그 번호 컴퓨터의 아이온에게 전달돼요.</p>
+    <div class="pick" id="pick"></div>
+  </section>
+  <section class="box" id="camBox" hidden>
+    <div id="camWrap" class="mirror"><video id="cam" playsinline muted></video><canvas id="ov"></canvas><div id="camMsg"><button class="btn go big" id="camBtn" type="button">카메라 켜기</button><div class="hint" style="color:#cfd8e3">카메라 허용 창이 뜨면 [허용]을 눌러요.</div></div></div>
+    <div class="row"><button class="btn" id="flipBtn" type="button">뒤쪽 카메라로 바꾸기</button><button class="btn" id="numBtn" type="button">번호 바꾸기</button></div>
+  </section>
+  <section class="box" id="sideBox" hidden>
+    <div id="me"></div>
+    <div id="gNow"><span class="e">✋</span>손을 보여 줘요</div>
+    <div id="sendSt"></div>
+    <div class="hint" id="fing" style="text-align:center;margin-top:4px"></div>
+    <div class="chips" id="chips"></div>
+    <p class="hint">손을 카메라에서 한 뼘 정도 떨어뜨리고, 손 전체가 화면에 들어오게 해요. 밝은 곳에서 잘 알아봐요.</p>
+  </section>
+</main>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const GEST=[['fist','쥔 손','✊'],['open','편 손','✋'],['up','엄지 위로','👍'],['down','엄지 아래로','👎'],['point','검지 위로','☝️'],['v','브이','✌️'],['love','사랑해','🤟']];
+const GN=Object.fromEntries(GEST.map(g=>[g[0],g]));
+const FB_CONFIG={apiKey:'AIzaSyAQnkse4wP-o0pLE3Eyt9G69JdRJB6xzWI',authDomain:'artemis-6.firebaseapp.com',databaseURL:'https://artemis-6-default-rtdb.asia-southeast1.firebasedatabase.app',projectId:'artemis-6',storageBucket:'artemis-6.firebasestorage.app',messagingSenderId:'1686860032',appId:'1:1686860032:web:780e04604f720bcd8f43e5'};
+const qs=new URLSearchParams(location.search);
+const ROOM=((qs.get('room')||'main').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,20))||'main';
+const BASE='artemis6/aion-'+ROOM+'/sim';
+const MP='https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/';
+const lsx={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let num=Number(lsx.get('aion_hand_num'))||0, db=null, fbOk=false, myRef=null;
+let stable=null, sentG=undefined, sentAt=0, hist=[], facing='user', stream=null, hands=null, running=false, busy=false, lastSend=0;
+
+/* ───── 손 모양 판단 (손가락 21개 점) ───── */
+function classify(lm,aspect){
+  if(!lm||lm.length<21) return null;
+  const a=aspect||1, P=lm.map(p=>({x:p.x*a,y:p.y,z:(p.z||0)*a}));
+  const d=(i,j)=>Math.hypot(P[i].x-P[j].x,P[i].y-P[j].y,P[i].z-P[j].z);
+  const ang=(a1,b1,c1)=>{ const u={x:P[b1].x-P[a1].x,y:P[b1].y-P[a1].y,z:P[b1].z-P[a1].z}, v={x:P[c1].x-P[b1].x,y:P[c1].y-P[b1].y,z:P[c1].z-P[b1].z}; const n=Math.hypot(u.x,u.y,u.z)*Math.hypot(v.x,v.y,v.z)||1e-9; return Math.acos(Math.max(-1,Math.min(1,(u.x*v.x+u.y*v.y+u.z*v.z)/n)))*180/Math.PI; };
+  const palm=d(0,9)||1e-9;
+  const fing=(m,p,t)=>d(0,t)>d(0,p)*1.1&&ang(m,p,t)<45;
+  const idx=fing(5,6,8), mid=fing(9,10,12), rng=fing(13,14,16), pky=fing(17,18,20);
+  const thumb=ang(2,3,4)<40&&d(4,9)>0.75*palm&&d(4,6)>0.6*palm;
+  const nF=idx+mid+rng+pky;
+  classify.last=[thumb,idx,mid,rng,pky];
+  const vx=P[4].x-P[2].x, vy=P[4].y-P[2].y, vl=Math.hypot(vx,vy)||1e-9;
+  if(nF===4||(nF===3&&thumb&&!(idx&&mid&&!rng))) return 'open';
+  if(idx&&pky&&!mid&&!rng) return 'love';
+  if(idx&&mid&&!rng&&!pky) return 'v';
+  if(idx&&!mid&&!rng&&!pky){ const iy=P[8].y-P[5].y, il=Math.hypot(P[8].x-P[5].x,iy)||1e-9; return iy<-0.5*il?'point':null; }
+  if(nF===0){
+    const ys=[5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20].map(i=>P[i].y), tv=vy/vl;
+    const above=(Math.min(...ys)-P[4].y)/palm, below=(P[4].y-Math.max(...ys))/palm;
+    if(thumb&&tv<-0.5&&above>0.25) return 'up';
+    if(thumb&&tv>0.5&&below>0.25) return 'down';
+    return 'fist';
+  }
+  return null;
+}
+window.__classify=classify;
+
+/* ───── 화면 ───── */
+function buildPick(){ const box=$('#pick'); box.textContent=''; for(let i=1;i<=25;i++){ const b=document.createElement('button'); b.type='button'; b.textContent=i; b.setAttribute('aria-pressed',i===num?'true':'false'); b.onclick=()=>setNum(i); box.appendChild(b); } }
+function buildChips(){ $('#chips').innerHTML=GEST.map(g=>'<div class="chip" data-g="'+g[0]+'"><span class="e">'+g[2]+'</span>'+g[1]+'</div>').join(''); }
+function showMain(){ $('#pickBox').hidden=!!num&&!pickOpen; $('#camBox').hidden=!num; $('#sideBox').hidden=!num; $('#me').textContent=num?(num+'번 컴퓨터의 아이온에게 보내요'):''; }
+let pickOpen=false;
+function setNum(n){ const old=num; num=n; lsx.set('aion_hand_num',n); pickOpen=false; buildPick(); showMain(); if(old&&old!==n&&db){ db.ref(BASE+'/hand/'+old).remove().catch(()=>{}); } bindRef(); sentG=undefined; pushNow(); }
+$('#numBtn').onclick=()=>{ pickOpen=true; showMain(); window.scrollTo(0,0); };
+function renderNow(){ const g=stable; $('#gNow').innerHTML=g?('<span class="e">'+GN[g][2]+'</span>'+GN[g][1]):'<span class="e">🖐</span>손을 보여 줘요'; document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.g===g)); }
+function setSendSt(){ const el=$('#sendSt'); if(!fbOk){ el.className=''; el.textContent='인터넷에 연결되지 않았어요. 새로 고침해 보세요.'; return; } if(!running){ el.className=''; el.textContent='카메라를 켜면 보내기 시작해요.'; return; } el.className='ok'; el.textContent='● '+num+'번 아이온에게 보내는 중'; }
+
+/* ───── 우리 반 연결 ───── */
+function bindRef(){ if(!db||!num) return; if(myRef){ try{ myRef.onDisconnect().cancel(); }catch(e){} } myRef=db.ref(BASE+'/hand/'+num); myRef.onDisconnect().remove(); }
+function pushNow(){ if(!fbOk||!myRef||!running) return; sentG=stable; sentAt=Date.now(); myRef.set({g:stable||'',t:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{}); }
+setInterval(()=>{ if(running&&Date.now()-sentAt>1500) pushNow(); setSendSt(); },500);
+(async()=>{
+  try{ firebase.initializeApp(FB_CONFIG); await firebase.auth().signInAnonymously(); db=firebase.database(); fbOk=true;
+    db.ref('.info/connected').on('value',s=>{ const on=s.val()===true; $('#net').className='net '+(on?'on':'off'); $('#net').querySelector('span').textContent=on?'우리 반과 연결됨':'다시 연결하는 중'; });
+    bindRef();
+  }catch(e){ fbOk=false; $('#net').className='net off'; $('#net').querySelector('span').textContent='연결 안 됨'; }
+  setSendSt();
+})();
+
+/* ───── 카메라와 손 인식 ───── */
+function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.crossOrigin='anonymous'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+function camMsg(html){ const m=$('#camMsg'); if(html==null){ m.hidden=true; return; } m.hidden=false; m.innerHTML=html; }
+async function initHands(){
+  if(hands) return hands;
+  camMsg('손 인식 프로그램을 불러오는 중이에요.<br><small>처음에는 30초쯤 걸릴 수 있어요.</small>');
+  if(!window.Hands) await loadScript(MP+'hands.js');
+  const h=new window.Hands({locateFile:f=>MP+f});
+  h.setOptions({maxNumHands:1,modelComplexity:qs.get('q')==='1'?1:0,minDetectionConfidence:0.6,minTrackingConfidence:0.5,selfieMode:false});
+  h.onResults(onResults);
+  await h.initialize();
+  hands=h; return h;
+}
+async function startCam(){
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ camMsg('이 브라우저에서는 카메라를 쓸 수 없어요. 크롬으로 열어 주세요.'); return; }
+    camMsg('카메라를 켜는 중이에요.');
+    stopCam();
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:640},height:{ideal:480}},audio:false});
+    const v=$('#cam'); v.srcObject=stream; await v.play();
+    $('#camWrap').classList.toggle('mirror',facing==='user');
+    await initHands();
+    camMsg(null); running=true; sentG=undefined; pushNow(); loop();
+  }catch(e){
+    console.error(e); running=false;
+    const n=e&&e.name;
+    if(n==='NotAllowedError'||n==='SecurityError') camMsg('카메라를 쓸 수 없게 막혀 있어요.<br>주소창 왼쪽 자물쇠를 눌러 카메라를 [허용]으로 바꾸고 새로 고침해요.');
+    else if(n==='NotFoundError'||n==='OverconstrainedError') camMsg('카메라를 찾지 못했어요. 다른 카메라로 바꿔 보세요.<br><button class="btn go" type="button" onclick="startCam()">다시 켜기</button>');
+    else camMsg('손 인식을 시작하지 못했어요. 인터넷 연결을 확인하고 새로 고침해요.<br><button class="btn go" type="button" onclick="startCam()">다시 해 보기</button>');
+  }
+}
+function stopCam(){ running=false; if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }
+async function loop(){
+  if(!running) return;
+  const v=$('#cam');
+  if(!busy&&v.readyState>=2&&performance.now()-lastSend>80){ busy=true; lastSend=performance.now(); try{ await hands.send({image:v}); }catch(e){ console.error(e); } busy=false; }
+  requestAnimationFrame(loop);
+}
+function onResults(r){
+  const v=$('#cam'), c=$('#ov'); const W=v.videoWidth||640, H=v.videoHeight||480; if(c.width!==W) c.width=W; if(c.height!==H) c.height=H;
+  const g=c.getContext('2d'); g.clearRect(0,0,W,H);
+  const lm=r.multiHandLandmarks&&r.multiHandLandmarks[0];
+  const raw=lm?classify(lm,W/H):null;
+  window.__last={lm:!!lm,raw:raw};
+  const fn=['엄지','검지','중지','약지','새끼'], fl=lm&&classify.last?fn.filter((x,i)=>classify.last[i]):null; $('#fing').textContent=lm?('AI가 본 펴진 손가락: '+(fl.length?fl.join(', '):'없음')):'AI가 손을 찾는 중이에요.';
+  if(window.__testHold) return;
+  if(lm){ g.strokeStyle='#3ddc6f'; g.lineWidth=4; const L=[[0,1,2,3,4],[0,5,6,7,8],[5,9,10,11,12],[9,13,14,15,16],[13,17,18,19,20],[0,17]]; for(const s of L){ g.beginPath(); s.forEach((i,k)=>{ const x=lm[i].x*W, y=lm[i].y*H; if(k) g.lineTo(x,y); else g.moveTo(x,y); }); g.stroke(); } g.fillStyle='#ffd400'; for(const p of lm){ g.beginPath(); g.arc(p.x*W,p.y*H,5,0,Math.PI*2); g.fill(); } }
+  feed(raw);
+}
+function feed(raw){
+  hist.push(raw||'none'); if(hist.length>5) hist.shift();
+  const cnt={}; hist.forEach(x=>cnt[x]=(cnt[x]||0)+1);
+  const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+  if(top&&top[1]>=3){ const g=top[0]==='none'?null:top[0]; if(g!==stable){ stable=g; renderNow(); pushNow(); } }
+}
+window.__feed=feed;
+$('#camBtn').onclick=startCam;
+$('#flipBtn').onclick=()=>{ facing=facing==='user'?'environment':'user'; $('#flipBtn').textContent=facing==='user'?'뒤쪽 카메라로 바꾸기':'앞쪽 카메라로 바꾸기'; if(running||stream) startCam(); };
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&myRef&&fbOk) myRef.remove().catch(()=>{}); else if(!document.hidden) pushNow(); });
+buildPick(); buildChips(); renderNow(); showMain();
+</script>
+</body>
+</html>

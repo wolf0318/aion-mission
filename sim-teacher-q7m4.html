@@ -47,6 +47,12 @@ td:first-child{white-space:nowrap;font-weight:700}
 .gate .msg{min-height:22px;color:var(--red);font-weight:700;margin-top:8px}
 .zoom{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:60;cursor:zoom-out;padding:16px}
 .zoom img{max-width:94vw;max-height:90vh;border-radius:10px;background:#fff}
+.mgst{font-size:22px;font-weight:900;margin:6px 0 10px;padding:8px 12px;border-radius:12px;background:#eef2f7}
+.mgst.away{background:#e8f8ec;color:#1e7b39}.mgst.look{background:#ffe9e6;color:#c0392b}.mgst.ready{background:#fff7dc;color:#7a5a00}
+.btn.look{background:#e04a3f;border-color:#e04a3f;color:#fff}
+.btn.away{background:#2e9e44;border-color:#2e9e44;color:#fff}
+.mgl{font-size:15px;line-height:1.7}
+.mgl b{display:inline-block;min-width:64px}
 </style>
 </head>
 <body>
@@ -73,7 +79,7 @@ td:first-child{white-space:nowrap;font-weight:700}
       <p class="hint">초록색 활동만 학생 화면에 보여요. 눌러서 켜고 꺼요.</p>
       <h2 style="margin-top:16px">모두 같은 화면으로</h2>
       <div class="row"><select id="goSel" aria-label="보낼 활동"><option value="block">블록 코딩</option><option value="card">카드 길 찾기</option><option value="joy">조이스틱 운전</option><option value="sumo">자리 뺏기 씨름</option></select><button class="btn" id="goBtn" type="button">이 활동으로 보내기</button></div>
-      <div class="row"><select id="mapSel" aria-label="바꿀 지도"><option value="mat3">놀이 자료 3 (할머니 댁)</option><option value="mat2">놀이 자료 2 (길 찾기, 약국)</option><option value="mat4">놀이 자료 4 (도로 운전)</option><option value="ex">소리풍경지도 (예시)</option><option value="a3">소리풍경지도 (A3 빈 지도)</option><option value="paper">흰 종이 (그림 그리기)</option></select><button class="btn" id="mapBtn" type="button">이 지도로 바꾸기</button></div>
+      <div class="row"><select id="mapSel" aria-label="바꿀 지도"><option value="mat3">놀이 자료 3 (할머니 댁)</option><option value="mat2">놀이 자료 2 (길 찾기, 약국)</option><option value="mat4">놀이 자료 4 (도로 운전)</option><option value="ex">소리풍경지도 (예시)</option><option value="a3">소리풍경지도 (A3 빈 지도)</option><option value="paper">흰 종이 (그림 그리기)</option><option value="mugung">무궁화 꽃 놀이 (손 인식)</option></select><button class="btn" id="mapBtn" type="button">이 지도로 바꾸기</button></div>
       <p class="hint">지도 바꾸기는 블록 코딩과 조이스틱 화면에 적용돼요.</p>
       <h2 style="margin-top:16px">정리</h2>
       <div class="row"><button class="btn" id="resetBtn" type="button">성공 기록과 화면 지우기</button></div>
@@ -82,8 +88,17 @@ td:first-child{white-space:nowrap;font-weight:700}
     <div class="box" style="margin-top:14px"><h2>방금 성공한 학생</h2><div class="feed" id="feed">아직 없어요.</div></div>
   </section>
   <section>
-    <div class="box"><h2>학생 현황</h2>
-      <div class="tblwrap"><table><thead><tr><th>학생</th><th>지금 하는 것</th><th>성공한 미션</th><th>코드</th></tr></thead><tbody id="tb"></tbody></table></div>
+    <div class="box" id="mgBox"><h2>무궁화 꽃 놀이 (6차시, 선생님이 술래)</h2>
+      <div class="row"><button class="btn navy" id="mgMap" type="button">모두 무궁화 꽃 지도로 보내기</button><button class="btn go" id="mgNew" type="button">새 판 시작 (모두 출발선으로)</button></div>
+      <div class="mgst" id="mgSt">아직 시작하지 않았어요. 학생 화면은 연습 술래로 움직여요.</div>
+      <div class="row"><button class="btn away big" id="mgAway" type="button">무궁화 꽃이 피었습니다 (돌아섬)</button><button class="btn look big" id="mgLook" type="button">돌아봄!</button></div>
+      <div class="row"><button class="btn" id="mgAuto" type="button">자동 술래: 꺼짐</button><button class="btn" id="mgEnd" type="button">놀이 끝내기 (연습 술래로)</button></div>
+      <p class="hint">[돌아봄!]을 누르고 1초가 지난 뒤에도 움직이는 아이온은 걸려요. 걸린 학생은 다음 판까지 기다려요. 판마다 학생이 ▶ 시작하기를 다시 눌러야 해요. 키보드 1은 돌아섬, 2는 돌아봄이에요.</p>
+      <div class="mgl" id="mgList"></div>
+      <p class="hint" style="margin-top:10px">태블릿 손 인식 주소: <b id="handUrl"></b></p>
+    </div>
+    <div class="box" style="margin-top:14px"><h2>학생 현황</h2>
+      <div class="tblwrap"><table><thead><tr><th>학생</th><th>지금 하는 것</th><th>태블릿</th><th>성공한 미션</th><th>코드</th></tr></thead><tbody id="tb"></tbody></table></div>
       <p class="hint" id="empty">아직 들어온 학생이 없어요.</p>
     </div>
     <div class="box" style="margin-top:14px"><h2>학생 화면 보기</h2>
@@ -114,14 +129,16 @@ $('#gform').addEventListener('submit',async e=>{ e.preventDefault(); const msg=$
 window.addEventListener('load',()=>{ if(gateOK()) unlock(); else $('#gpin').focus(); });
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const BADGE={grandma:'할머니 댁',pharmacy:'약국',card1:'카드 ➊',card2:'카드 ➋',card3:'카드 ➊+➋',road:'도로 규칙',road2:'도로 도착'};
+const BADGE={grandma:'할머니 댁',pharmacy:'약국',card1:'카드 ➊',card2:'카드 ➋',card3:'카드 ➊+➋',road:'도로 규칙',road2:'도로 도착',patrol:'거리 순찰',mugung:'무궁화 꽃'};
+const GN={fist:'✊ 쥔 손',open:'✋ 편 손',up:'👍 엄지 위로',down:'👎 엄지 아래로',point:'☝️ 검지 위로',v:'✌️ 브이',love:'🤟 사랑해'};
 const MODEN={block:'블록 코딩',card:'카드 길 찾기',joy:'조이스틱',sumo:'씨름'};
-const MAPN={mat2:'놀이 자료 2',mat3:'놀이 자료 3',mat4:'놀이 자료 4',ex:'소리풍경 예시',a3:'A3 빈 지도',paper:'흰 종이',mine:'내 지도 사진',sumo:'경기장'};
+const MAPN={mat2:'놀이 자료 2',mat3:'놀이 자료 3',mat4:'놀이 자료 4',ex:'소리풍경 예시',a3:'A3 빈 지도',paper:'흰 종이',mine:'내 지도 사진',sumo:'경기장',mugung:'무궁화 꽃'};
 const ALL={block:true,card:true,joy:true,sumo:true};
-let db=null, D={students:{},clear:{},control:{},snap:{}};
+let db=null, D={students:{},clear:{},control:{},snap:{},hand:{},mg:{}}, handSeen={};
 const ref=p=>db.ref(BASE+(p?'/'+p:''));
 async function init(){
   $('#stuUrl').textContent=location.origin+location.pathname.replace(/[^/]*$/,'')+'sim.html'+(ROOM!=='main'?'?room='+ROOM:'');
+  $('#handUrl').textContent=location.origin+location.pathname.replace(/[^/]*$/,'')+'hand.html'+(ROOM!=='main'?'?room='+ROOM:'');
   try{ firebase.initializeApp(FB_CONFIG); await firebase.auth().signInAnonymously(); db=firebase.database(); }
   catch(e){ $('#net').textContent='연결 안 됨 (새로 고침해 보세요)'; return; }
   db.ref('.info/connected').on('value',s=>{ $('#net').textContent=s.val()?'● 연결됨':'다시 연결하는 중'; });
@@ -129,10 +146,11 @@ async function init(){
   ref('clear').on('value',s=>{ D.clear=s.val()||{}; render(); });
   ref('control').on('value',s=>{ D.control=s.val()||{}; renderCtl(); });
   ref('snap').on('value',s=>{ D.snap=s.val()||{}; renderShots(); });
+  ref('hand').on('value',s=>{ D.hand=s.val()||{}; const now=Date.now(); Object.keys(D.hand).forEach(k=>{ const v=D.hand[k]; const sig=v&&(v.g+'|'+v.t); if(!handSeen[k]||handSeen[k].sig!==sig) handSeen[k]={sig:sig,at:now}; }); render(); });
   ref('feed').limitToLast(40).on('value',s=>{ const arr=Object.values(s.val()||{}).sort((a,b)=>(b.t||0)-(a.t||0)); $('#feed').innerHTML=arr.length?arr.map(x=>'<div>'+esc(x.team)+'모둠 '+esc(x.num)+'번: '+esc(x.label)+(x.t?' <span style="opacity:.7">('+new Date(x.t).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+')</span>':'')+'</div>').join(''):'아직 없어요.'; });
 }
 function tabsNow(){ return Object.assign({},ALL,D.control.tabs||{}); }
-function renderCtl(){ const c=D.control; $('#lockSt').textContent=c.lock?'지금 학생 화면이 잠겨 있어요.':''; const t=tabsNow(); $$('#tabsTg button').forEach(b=>b.classList.toggle('on',!!t[b.dataset.m])); }
+function renderCtl(){ const c=D.control; renderMg(); $('#lockSt').textContent=c.lock?'지금 학생 화면이 잠겨 있어요.':''; const t=tabsNow(); $$('#tabsTg button').forEach(b=>b.classList.toggle('on',!!t[b.dataset.m])); }
 $('#lockBtn').onclick=()=>{ if(db) ref('control').update({lock:true,lockMsg:$('#lockMsg').value.trim()||'선생님을 봐 주세요.'}); };
 $('#unlockBtn').onclick=()=>{ if(db) ref('control').update({lock:false}); };
 $('#stopBtn').onclick=()=>{ if(db) ref('control/stop').set(Date.now()); };
@@ -142,13 +160,41 @@ $$('#tabsTg button').forEach(b=>b.onclick=()=>{ if(!db) return; const t=tabsNow(
 $('#goBtn').onclick=()=>{ if(!db) return; const m=$('#goSel').value; const t=tabsNow(); if(!t[m]){ t[m]=true; ref('control/tabs').set(t); } ref('control/go').set({mode:m,t:Date.now()}); };
 $('#mapBtn').onclick=()=>{ if(db) ref('control/map').set({key:$('#mapSel').value,t:Date.now()}); };
 let armT=null;
-$('#resetBtn').onclick=()=>{ const b=$('#resetBtn'); if(!b.classList.contains('armed')){ b.classList.add('armed'); b.textContent='한 번 더 누르면 지워요'; armT=setTimeout(()=>{ b.classList.remove('armed'); b.textContent='성공 기록과 화면 지우기'; },4000); return; } clearTimeout(armT); b.classList.remove('armed'); b.textContent='성공 기록과 화면 지우기'; if(!db) return; ['clear','feed','snap','snapReq'].forEach(p=>ref(p).remove()); Object.entries(D.students).forEach(([k,s])=>{ if(!s.online) ref('students/'+k).remove(); }); };
+$('#resetBtn').onclick=()=>{ const b=$('#resetBtn'); if(!b.classList.contains('armed')){ b.classList.add('armed'); b.textContent='한 번 더 누르면 지워요'; armT=setTimeout(()=>{ b.classList.remove('armed'); b.textContent='성공 기록과 화면 지우기'; },4000); return; } clearTimeout(armT); b.classList.remove('armed'); b.textContent='성공 기록과 화면 지우기'; if(!db) return; ['clear','feed','snap','snapReq','mg'].forEach(p=>ref(p).remove()); Object.entries(D.students).forEach(([k,s])=>{ if(!s.online) ref('students/'+k).remove(); }); };
 function rows(){ const keys=new Set([...Object.keys(D.students),...Object.keys(D.clear)]); return [...keys].map(k=>{ const s=D.students[k]||{}; const m=k.match(/^t(\d+)n(\d+)$/)||[0,0,0]; return {k:k,team:s.team||+m[1],num:s.num||+m[2],on:!!s.online,mode:s.mode,map:s.map,run:s.run,code:s.code,cl:D.clear[k]||{}}; }).filter(r=>r.team&&r.num).sort((a,b)=>(b.on-a.on)||(a.team-b.team)||(a.num-b.num)); }
 function render(){
   const R=rows(); $('#empty').hidden=R.length>0; $('#cnt').textContent='접속 '+R.filter(r=>r.on).length+'명';
-  $('#tb').innerHTML=R.map(r=>'<tr><td><span class="dot'+(r.on?' on':'')+'"></span>'+r.team+'모둠 '+r.num+'번</td><td>'+(r.on?esc(MODEN[r.mode]||'')+((r.map&&(r.mode==='block'||r.mode==='joy'))?'<br><span class="hint">'+esc(MAPN[r.map]||r.map)+'</span>':'')+(r.run?' <b style="color:#2e9e44">실행 중</b>':''):'<span class="hint">나감</span>')+'</td><td>'+(Object.keys(r.cl).map(c=>'<span class="bdg">★ '+esc(BADGE[c]||c)+'</span>').join('')||'<span class="hint">-</span>')+'</td><td class="code">'+esc(r.code||'')+'</td></tr>').join('');
+  $('#tb').innerHTML=R.map(r=>'<tr><td><span class="dot'+(r.on?' on':'')+'"></span>'+r.team+'모둠 '+r.num+'번</td><td>'+(r.on?esc(MODEN[r.mode]||'')+((r.map&&(r.mode==='block'||r.mode==='joy'))?'<br><span class="hint">'+esc(MAPN[r.map]||r.map)+'</span>':'')+(r.run?' <b style="color:#2e9e44">실행 중</b>':''):'<span class="hint">나감</span>')+'</td><td>'+handCell(r.num)+'</td><td>'+(Object.keys(r.cl).map(c=>'<span class="bdg">★ '+esc(BADGE[c]||c)+'</span>').join('')||'<span class="hint">-</span>')+'</td><td class="code">'+esc(r.code||'')+'</td></tr>').join('');
 }
 function renderShots(){ const R=rows().filter(r=>r.on||D.snap[r.k]); $('#shots').innerHTML=R.length?R.map(r=>{ const s=D.snap[r.k]; return '<div class="shot">'+r.team+'모둠 '+r.num+'번'+(s&&s.img?'<img src="'+esc(s.img)+'" alt="'+r.team+'모둠 '+r.num+'번 화면" data-z="1">':'<div class="hint">[지금 화면 보기]를 눌러요</div>')+'</div>'; }).join(''):'<p class="hint">아직 들어온 학생이 없어요.</p>'; }
+function handCell(n){ const v=D.hand[n], h=handSeen[n]; if(!v||!h||Date.now()-h.at>5000) return '<span class="hint">-</span>'; return '<b style="color:#2e9e44">연결</b><br><span class="hint">'+esc(GN[v.g]||'손 없음')+'</span>'; }
+setInterval(()=>{ if(db) render(); },3000);
+function mgNow(){ return D.control.mugung||{}; }
+function mgSet(o){ if(!db) return; const c=Object.assign({},mgNow(),o,{t:Date.now()}); ref('control/mugung').set(c); }
+let mgRef=null, mgRound=null;
+function renderMg(){
+  const c=mgNow(), st=$('#mgSt');
+  if(!c.on){ st.className='mgst'; st.textContent='아직 시작하지 않았어요. 학생 화면은 연습 술래로 움직여요.'; }
+  else { st.className='mgst '+c.phase; st.textContent=(c.round||1)+'판: '+({ready:'출발선에서 준비 중',away:'술래가 돌아섰어요 (움직여도 돼요)',look:'술래가 보고 있어요 (움직이면 걸려요)'}[c.phase]||''); }
+  if(db&&c.on&&c.round!==mgRound){ mgRound=c.round; if(mgRef) mgRef.off(); mgRef=ref('mg/'+c.round); mgRef.on('value',s=>{ D.mg=s.val()||{}; renderMgList(); }); }
+  if(!c.on){ if(mgRef){ mgRef.off(); mgRef=null; } mgRound=null; D.mg={}; renderMgList(); }
+}
+function renderMgList(){
+  const a=Object.values(D.mg||{}).filter(x=>x&&x.num);
+  if(!a.length){ $('#mgList').innerHTML=mgNow().on?'<span class="hint">학생이 움직이기 시작하면 여기에 보여요.</span>':''; return; }
+  const done=a.filter(x=>x.st==='done').sort((p,q)=>(p.t||0)-(q.t||0)), play=a.filter(x=>x.st==='play').sort((p,q)=>(q.p||0)-(p.p||0)), out=a.filter(x=>x.st==='out');
+  $('#mgList').innerHTML=(done.length?'<div><b>도착</b>'+done.map((x,i)=>(i+1)+'등 '+esc(x.num)+'번').join(', ')+'</div>':'')+(play.length?'<div><b>달리는 중</b>'+play.map(x=>esc(x.num)+'번 '+(x.p||0)+'%').join(', ')+'</div>':'')+(out.length?'<div><b style="color:#c0392b">걸림</b>'+out.map(x=>esc(x.num)+'번').join(', ')+'</div>':'');
+}
+$('#mgMap').onclick=()=>{ if(!db) return; const t=tabsNow(); if(!t.block){ t.block=true; ref('control/tabs').set(t); } ref('control/go').set({mode:'block',t:Date.now()}); setTimeout(()=>ref('control/map').set({key:'mugung',t:Date.now()}),400); };
+$('#mgNew').onclick=()=>{ const c=mgNow(); mgSet({on:true,phase:'ready',round:(c.on&&c.round?c.round:0)+1}); };
+$('#mgAway').onclick=()=>{ const c=mgNow(); if(!c.on){ mgSet({on:true,phase:'away',round:1}); return; } mgSet({phase:'away'}); };
+$('#mgLook').onclick=()=>{ const c=mgNow(); if(!c.on){ mgSet({on:true,phase:'look',round:1}); return; } mgSet({phase:'look'}); };
+$('#mgEnd').onclick=()=>{ stopAuto(); mgSet({on:false,phase:'away'}); };
+let mgAutoT=null;
+function stopAuto(){ if(mgAutoT){ clearTimeout(mgAutoT); mgAutoT=null; } $('#mgAuto').textContent='자동 술래: 꺼짐'; }
+function autoStep(){ const c=mgNow(); if(!c.on){ stopAuto(); return; } const next=c.phase==='away'?'look':'away'; mgSet({phase:next}); mgAutoT=setTimeout(autoStep,next==='away'?3000+Math.random()*3500:3000); }
+$('#mgAuto').onclick=()=>{ if(mgAutoT){ stopAuto(); return; } const c=mgNow(); if(!c.on) mgSet({on:true,phase:'away',round:1}); else mgSet({phase:'away'}); $('#mgAuto').textContent='자동 술래: 켜짐'; mgAutoT=setTimeout(autoStep,3000+Math.random()*3500); };
+document.addEventListener('keydown',e=>{ if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')) return; if(e.key==='1') $('#mgAway').click(); if(e.key==='2') $('#mgLook').click(); });
 $('#snapBtn').onclick=()=>{ if(db) ref('snapReq').set(Date.now()); };
 let autoT=null;
 $('#autoBtn').onclick=()=>{ if(autoT){ clearInterval(autoT); autoT=null; $('#autoBtn').textContent='자동 새로 보기: 꺼짐'; return; } if(db) ref('snapReq').set(Date.now()); autoT=setInterval(()=>{ if(db) ref('snapReq').set(Date.now()); },10000); $('#autoBtn').textContent='자동 새로 보기: 10초마다'; };

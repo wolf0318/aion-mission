@@ -127,6 +127,15 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
 .dpad button.on{background:var(--navy);border-color:var(--navy);color:#fff}
 .dpad .u{grid-column:2;grid-row:1}.dpad .l{grid-column:1;grid-row:2}.dpad .d{grid-column:2;grid-row:2}.dpad .r{grid-column:3;grid-row:2}
 #myColor{font-weight:800;font-size:17px}
+#handBox{position:absolute;left:10px;top:10px;z-index:5;background:rgba(255,255,255,.96);border:2px solid #3b5bb5;border-radius:12px;padding:8px 10px;font-size:14px;width:min(300px,62%);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+#handBox .ht{font-weight:800;color:#3b5bb5}
+#handBox .hg{font-size:24px;font-weight:900;margin:2px 0}
+#handBox .hs{font-size:13px;color:var(--muted);line-height:1.45}
+#handBox .hs.ok{color:#1e7b39;font-weight:700}
+#handMan{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+#handMan button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:3px 6px;font-size:13px;font-weight:700;cursor:pointer}
+#handMan button.on{background:#3b5bb5;border-color:#3b5bb5;color:#fff}
+.linkbtn{border:0;background:none;color:#3b5bb5;text-decoration:underline;font-size:13px;cursor:pointer;padding:0;margin-top:4px}
 @media (max-width:900px){main{flex-direction:column}#left{min-height:430px}#right{min-height:420px}}
 @media (max-width:600px){header .note{display:none}}
 </style>
@@ -161,6 +170,8 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
           <option value="pharmacy">약국 찾아가기 시작 코드</option>
           <option value="circle">그림 그리기 (빙글빙글)</option>
           <option value="patrol">반복으로 네모 그리기</option>
+          <option value="patrol4">04 거리 순찰 (놀이 자료 4)</option>
+          <option value="hand">07 손으로 말해요 (무궁화 꽃)</option>
           <option value="empty">빈 코드</option>
         </select>
       </div>
@@ -274,7 +285,15 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
       <label class="btn" id="upLbl" style="display:none">지도 사진 고르기<input type="file" id="upFile" accept="image/*" hidden></label>
     </div>
     <div id="mission"><span id="missionText"></span><span class="res" id="missionRes"></span></div>
-    <div id="stageWrap"><canvas id="stage"></canvas><div id="big"></div><div id="ticker"></div></div>
+    <div id="stageWrap"><canvas id="stage"></canvas><div id="big"></div><div id="ticker"></div>
+      <div id="handBox" hidden>
+        <div class="ht">AI 손 인식 (태블릿 카메라)</div>
+        <div class="hg" id="handG">손이 안 보여요</div>
+        <div class="hs" id="handSt"></div>
+        <button class="linkbtn" id="handManBtn" type="button">태블릿이 안 될 때: 손 모양 버튼으로 하기</button>
+        <div id="handMan" hidden></div>
+      </div>
+    </div>
     <div id="status"><span id="stPos"></span><span id="stMove"></span><span id="stLed"></span></div>
   </section>
 </main>
@@ -312,6 +331,7 @@ const MAPS={
   a3:{name:'우리 동네 소리풍경지도 (A3 빈 지도)',img:'a3',w:1500,h:1062,cm:42,start:{x:300,y:560,h:0}},
   paper:{name:'흰 종이 (그림 그리기)',img:null,w:1500,h:1000,cm:60,start:{x:750,y:500,h:0}},
   mine:{name:'내 지도 사진 올리기',img:'mine',w:1500,h:1000,cm:42,start:{x:200,y:500,h:0}},
+  mugung:{name:'무궁화 꽃 놀이 (손 인식)',img:null,w:1500,h:700,cm:120,start:{x:110,y:350,h:0}},
   sumo:{name:'씨름 경기장',img:null,w:900,h:900,cm:36,start:{x:450,y:450,h:0},hidden:true}
 };
 /* 놀이 자료 2 격자: 세로 길 x, 가로 길 y */
@@ -425,6 +445,7 @@ function render(){
   g.setTransform(view.s,0,0,view.s,view.ox,view.oy);
   g.fillStyle='#fff'; g.fillRect(0,0,m.w,m.h);
   if(curMap==='sumo'){ renderSumo(g); requestAnimationFrame(render); return; }
+  if(curMap==='mugung') drawMugung(g);
   const im=m.img?IMGS[m.img]:null;
   if(im && im.complete && im.naturalWidth) g.drawImage(im,0,0,m.w,m.h);
   else if(m.img==='mine'){ g.fillStyle='#f1f4f8'; g.fillRect(0,0,m.w,m.h); g.fillStyle='#5b6b7b'; g.font='bold 48px Malgun Gothic, sans-serif'; g.textAlign='center'; g.fillText('위쪽 [지도 사진 고르기]로 사진을 골라요',m.w/2,m.h/2); }
@@ -434,6 +455,7 @@ function render(){
   drawMissionMarks(g);
   if(showTrail && trail.length>1){ g.strokeStyle='rgba(224,74,63,.75)'; g.lineWidth=Math.max(2,0.35*pxcm()); g.setLineDash([1.2*pxcm(),0.8*pxcm()]); g.lineJoin='round'; g.beginPath(); g.moveTo(trail[0].x,trail[0].y); for(const p of trail) g.lineTo(p.x,p.y); g.lineTo(R.x,R.y); g.stroke(); g.setLineDash([]); }
   drawRobot(g,R.x,R.y,R.h);
+  if(curMap==='mugung') drawMugungTop(g);
   if(penOn){ const p=penPoint(R.x,R.y,R.h*Math.PI/180); g.fillStyle=penColor; g.beginPath(); g.arc(p.x,p.y,0.6*pxcm(),0,Math.PI*2); g.fill(); }
   statusLine();
   requestAnimationFrame(render);
@@ -461,7 +483,41 @@ function blockMission(){
   if(curMap==='mat3') setMission({key:'grandma',label:'할머니 댁 다녀오기',text:'미션: 할머니 댁에 갔다가 출발 자리로 돌아와요.',marks:[{...PLACES.grandma,r:6},{x:MAPS.mat3.start.x,y:MAPS.mat3.start.y,name:'출발',r:6}],check:()=>{ if(!visited['할머니 댁']) return '할머니 댁까지 가지 못했어요. 시간이나 속도를 바꿔 봐요.'; if(!near(MAPS.mat3.start,6)) return '할머니 댁에는 갔어요! 돌아오는 길을 다시 맞춰 봐요.'; return true; }});
   else if(curMap==='mat2') setMission({key:'pharmacy',label:'약국 찾아가기',text:'미션: 출발 자리에서 약국까지 가요. (속도와 시간을 맞춰요)',marks:[{...PLACES.pharmacy,r:5}],check:()=>near(PLACES.pharmacy,5)?true:'약국에 닿지 못했어요. 시간이나 속도를 바꿔 봐요.'});
   else if(curMap==='paper') setMission({text:'그림 그리기: [펜 꽂기]를 켜고 제자리 회전이나 반복 블록으로 그림을 그려요.'});
+  else if(curMap==='mat4') setMission({key:'patrol',label:'거리 순찰',text:'순찰 미션: 반복 블록으로 네모 도로를 한 바퀴 돌고 출발 자리로 돌아와요.',marks:[{x:162,y:313,name:'교차로 1',r:5},{x:755,y:313,name:'교차로 2',r:5},{x:755,y:820,name:'교차로 3',r:5},{x:162,y:820,name:'출발',r:5,hide:true}],check:()=>{ const n=['교차로 1','교차로 2','교차로 3'].filter(k=>visited[k]).length; if(n<3) return '교차로 '+n+'곳만 지났어요. 반복 횟수와 방향을 확인해 봐요.'; if(!near({x:162,y:820},5)) return '세 교차로는 지났어요! 출발 자리까지 돌아와요.'; const tips=[]; if(!usedBlock('loop_n')) tips.push('반복하기 블록으로 줄여 봐요'); if(R.led) tips.push('순찰이 끝나면 LED를 꺼요'); if(tips.length) setTimeout(()=>toast('순찰 성공! '+tips.join(', ')+'.',4000),900); return true; }});
+  else if(curMap==='mugung') mgMission();
   else setMission(null);
+}
+function usedBlock(t){ try{ return !!ws && ws.getAllBlocks(false).some(b=>b.type===t); }catch(e){ return false; } }
+
+/* ───────── 놀이 자료 4 길 따라가기 (교차로 블록) ───────── */
+const ROAD4={xs:[162,755,1338],ys:[313,820],xmin:24,xmax:1476,ymin:24,ymax:960};
+async function lineCross(nth,tok){
+  if(curMap!=='mat4'){ toast('교차로 블록은 놀이 자료 4 지도에서 써요. 오른쪽 위에서 지도를 바꿔요.',3500); await sleep(600,tok); return; }
+  stopMotion();
+  const hd=Math.round(R.h/90)*90, vert=Math.abs(hd)%180===90;
+  const lines=vert?ROAD4.xs:ROAD4.ys, here=vert?R.x:R.y;
+  const on=lines.reduce((a,b)=>Math.abs(b-here)<Math.abs(a-here)?b:a);
+  if(Math.abs(on-here)>40){ toast('아이온이 검은 길 위에 없어요. [출발 자리로]를 눌러요.',3000); await sleep(600,tok); return; }
+  R.h=hd; if(vert) R.x=on; else R.y=on;
+  const sgn=vert?(hd>0?1:-1):(Math.abs(hd)===180?-1:1);
+  const pos=vert?R.y:R.x, cross=vert?ROAD4.ys:ROAD4.xs;
+  const ahead=cross.map(c=>(c-pos)*sgn).filter(d=>d>15).sort((a,b)=>a-b);
+  let dist, endMsg=null;
+  if(ahead.length>=nth) dist=ahead[nth-1];
+  else { const lim=vert?(sgn>0?ROAD4.ymax:ROAD4.ymin):(sgn>0?ROAD4.xmax:ROAD4.xmin); dist=Math.max(0,(lim-pos)*sgn); endMsg=ahead.length?('교차로가 '+ahead.length+'개뿐이라 길 끝에서 멈췄어요.'):'앞에 교차로가 없어서 길 끝에서 멈췄어요.'; }
+  const k=pxcm(), v=V100*0.5; R.v=v; R.w=0; lastT=performance.now();
+  await sleep(dist/(v*k)*1000,tok);
+  stopMotion();
+  const tx=vert?on:R0(pos+dist*sgn), ty=vert?R0(pos+dist*sgn):on; R.x=tx; R.y=ty; R.h=hd; missionTrack();
+  if(endMsg) toast(endMsg,3000);
+}
+const R0=v=>Math.round(v*10)/10;
+async function turnDir(d,tok){
+  stopMotion();
+  const from=Math.round(R.h/90)*90, to=from+(d==='L'?-90:90);
+  R.v=0; R.w=(d==='L'?-1:1)*S100; lastT=performance.now();
+  await sleep(90/S100*1000,tok);
+  stopMotion(); R.h=((to%360)+540)%360-180;
 }
 
 /* ───────── 신호등 (놀이 자료 4) ───────── */
@@ -489,15 +545,22 @@ function defineBlocks(){
     {type:'led_blink',message0:'LED %1 색으로 깜빡이기',args0:[{type:'field_dropdown',name:'C',options:LEDC}],previousStatement:null,nextStatement:null,colour:'#e67e22'},
     {type:'led_off',message0:'LED 끄기',previousStatement:null,nextStatement:null,colour:'#e67e22'},
     {type:'buzz',message0:'버저 %1 음을 %2 박자로 울리기',args0:[{type:'field_dropdown',name:'N',options:Object.keys(NOTES).map(k=>[k,k])},{type:'field_dropdown',name:'B',options:[['0.5','0.5'],['1','1'],['2','2']]}],previousStatement:null,nextStatement:null,colour:'#4a9d3a'},
-    {type:'pen_set',message0:'펜 %1',args0:[{type:'field_dropdown',name:'P',options:[['내리기 (그리기)','down'],['올리기 (안 그리기)','up']]}],previousStatement:null,nextStatement:null,colour:'#c0392b'}
+    {type:'pen_set',message0:'펜 %1',args0:[{type:'field_dropdown',name:'P',options:[['내리기 (그리기)','down'],['올리기 (안 그리기)','up']]}],previousStatement:null,nextStatement:null,colour:'#c0392b'},
+    {type:'line_cross',message0:'%1 교차로까지 이동하기',args0:[{type:'field_dropdown',name:'NTH',options:[['첫 번째','1'],['두 번째','2'],['세 번째','3'],['네 번째','4']]}],previousStatement:null,nextStatement:null,colour:'#2e9e44',tooltip:'검은 길을 따라가다가 정한 교차로에서 멈춰요. (놀이 자료 4)'},
+    {type:'turn_dir',message0:'방향 바꾸기 %1',args0:[{type:'field_dropdown',name:'D',options:[['우회전','R'],['좌회전','L']]}],previousStatement:null,nextStatement:null,colour:'#2e9e44',tooltip:'교차로에서 오른쪽이나 왼쪽으로 돌아요.'},
+    {type:'hand_start',message0:'손 인식 시작하고 %1',args0:[{type:'field_dropdown',name:'SHOW',options:[['보이기','show'],['숨기기','hide']]}],previousStatement:null,nextStatement:null,colour:'#1f7ac2',tooltip:'태블릿 카메라로 내 손 모양을 알아보기 시작해요.'},
+    {type:'hand_if',message0:'만일 손 모양이 %1 이면 %2 %3',args0:[{type:'field_dropdown',name:'G',options:GEST.map(g=>[g[1],g[0]])},{type:'input_dummy'},{type:'input_statement',name:'DO'}],previousStatement:null,nextStatement:null,colour:'#3b5bb5',tooltip:'태블릿 카메라에 보이는 손 모양이 이것이면 안의 블록을 실행해요.'},
+    {type:'piano',message0:'피아노 연주하기 %1',args0:[{type:'field_input',name:'S',text:'1'}],previousStatement:null,nextStatement:null,colour:'#4a9d3a',tooltip:'1 도, 2 레, 3 미, 4 파, 5 솔, 6 라, 7 시, 8 높은 도. 숫자를 이어 쓰면 노래가 돼요.'}
   ]);
 }
 const TOOLBOX={kind:'categoryToolbox',contents:[
   {kind:'category',name:'시작',colour:'#22a845',contents:[{kind:'block',type:'aion_start'}]},
   {kind:'category',name:'로봇',colour:'#2e9e44',contents:[{kind:'block',type:'aion_move'},{kind:'block',type:'aion_move',fields:{DIR:'fwd',SPD:'50',TIME:'3'}},{kind:'block',type:'aion_move',fields:{DIR:'spinL',SPD:'50',TIME:'-1'}},{kind:'block',type:'aion_stop'}]},
+  {kind:'category',name:'길 따라가기',colour:'#1f8a4c',contents:[{kind:'label',text:'놀이 자료 4 도로에서 써요'},{kind:'block',type:'line_cross'},{kind:'block',type:'turn_dir'},{kind:'block',type:'turn_dir',fields:{D:'L'}}]},
   {kind:'category',name:'반복',colour:'#8e44ad',contents:[{kind:'block',type:'loop_n'},{kind:'block',type:'loop_forever'},{kind:'block',type:'loop_break'},{kind:'block',type:'wait_s'},{kind:'block',type:'restart'}]},
   {kind:'category',name:'LED',colour:'#e67e22',contents:[{kind:'block',type:'led_on'},{kind:'block',type:'led_blink'},{kind:'block',type:'led_off'}]},
-  {kind:'category',name:'소리',colour:'#4a9d3a',contents:[{kind:'block',type:'buzz'}]},
+  {kind:'category',name:'AI 손 인식',colour:'#3b5bb5',contents:[{kind:'block',type:'hand_start'},{kind:'block',type:'hand_if',fields:{G:'fist'}},{kind:'block',type:'hand_if',fields:{G:'open'}}]},
+  {kind:'category',name:'소리',colour:'#4a9d3a',contents:[{kind:'block',type:'piano'},{kind:'block',type:'buzz'}]},
   {kind:'category',name:'펜',colour:'#c0392b',contents:[{kind:'block',type:'pen_set'}]}
 ]};
 function blk(type,fields,next,inner){ const o={type:type}; if(fields) o.fields=fields; if(inner) o.inputs={DO:{block:inner}}; if(next) o.next={block:next}; return o; }
@@ -507,6 +570,8 @@ const EXAMPLES={
   pharmacy:{map:'mat2',top:chain([['aion_start'],['aion_move',{DIR:'fwd',SPD:'50',TIME:'3'}],['aion_move',{DIR:'spinL',SPD:'50',TIME:'3'}],['aion_move',{DIR:'fwd',SPD:'50',TIME:'3'}]])},
   circle:{map:'paper',pen:true,top:chain([['aion_start'],['pen_set',{P:'down'}],['aion_move',{DIR:'spinL',SPD:'50',TIME:'10'}],['aion_move',{DIR:'left',SPD:'60',TIME:'10'}]])},
   patrol:{map:'paper',pen:true,top:chain([['aion_start'],['pen_set',{P:'down'}],['loop_n',{N:4},chain([['aion_move',{DIR:'fwd',SPD:'50',TIME:'3'}],['led_on',{C:'#2f7bff'}],['aion_move',{DIR:'spinR',SPD:'50',TIME:'2'}],['led_off']])]])},
+  patrol4:{map:'mat4',top:chain([['aion_start'],['led_blink',{C:'#ff2a1f'}],['loop_n',{N:4},chain([['line_cross',{NTH:'1'}],['turn_dir',{D:'R'}]])],['led_off']])},
+  hand:{map:'mugung',top:chain([['aion_start'],['hand_start',{SHOW:'show'}],['loop_forever',null,chain([['hand_if',{G:'fist'},chain([['aion_move',{DIR:'fwd',SPD:'50',TIME:'-1'}],['led_blink',{C:'#ff2a1f'}],['piano',{S:'1'}]])],['hand_if',{G:'open'},chain([['aion_stop'],['led_off'],['piano',{S:'5'}]])]])]])},
   empty:{top:blk('aion_start')}
 };
 function loadTop(top){ const st={blocks:{languageVersion:0,blocks:[Object.assign({x:40,y:40},top)]}}; Blockly.serialization.workspaces.load(st,ws); }
@@ -542,14 +607,22 @@ async function execBlock(b,tok){
     case 'led_off': R.led=null; R.blink=false; break;
     case 'buzz':{ const f=NOTES[b.getFieldValue('N')]||440, beat=+b.getFieldValue('B')||1; tone(f,beat*0.5,'square',0.06); await sleep(beat*500,tok); break; }
     case 'pen_set': penOn=b.getFieldValue('P')==='down'; penBtnText(); break;
+    case 'line_cross': await lineCross(+b.getFieldValue('NTH')||1,tok); break;
+    case 'turn_dir': await turnDir(b.getFieldValue('D'),tok); break;
+    case 'hand_start': handStart(b.getFieldValue('SHOW')!=='hide'); break;
+    case 'hand_if':{ if(!HAND.on&&!HAND.warned){ HAND.warned=true; toast('먼저 [손 인식 시작하고] 블록을 넣어요.',3000); } if(HAND.on&&curHand()===b.getFieldValue('G')) await execChain(b.getInputTargetBlock('DO'),tok); break; }
+    case 'piano':{ const s=String(b.getFieldValue('S')||''); let played=0; for(const ch of s){ if(played>=16) break; const f=PIANO[ch]; if(f){ tone(f,0.28,'triangle',0.09); played++; await sleep(320,tok); } else if(ch==='-'||ch===' ') await sleep(160,tok); } if(!played) await sleep(50,tok); break; }
   }
 }
+const PIANO={'1':262,'2':294,'3':330,'4':349,'5':392,'6':440,'7':494,'8':523};
 async function runProgram(){
   if(!ws){ toast('블록 코딩 화면이 아직 준비되지 않았어요.'); return; }
   ac(); stopProgram(true);
   const hats=ws.getTopBlocks(true).filter(b=>b.type==='aion_start');
   if(!hats.length){ toast('「▶ 시작하기 버튼을 클릭했을 때」 블록이 필요해요. [시작] 꾸러미에 있어요.'); return; }
   if(hats.every(h=>!h.getNextBlock())){ toast('시작 블록 아래에 블록을 붙여요.'); return; }
+  if(!usedBlock('hand_start')){ HAND.on=false; $('#handBox').hidden=true; $('#handMan').hidden=true; }
+  if(mode==='block'&&curMap==='mugung'&&(MG.out||MG.done)&&!MG.teacher) mgReset();
   const tok={stop:false}; RUN=tok; missionReset(); setRunning(true);
   let ended='done';
   try{
@@ -568,7 +641,7 @@ function setRunning(on){ $('#runBtn').disabled=on; }
 $('#runBtn').onclick=runProgram;
 $('#stopBtn').onclick=()=>stopProgram(false);
 $$('#execSeg button').forEach(b=>b.onclick=()=>{ $$('#execSeg button').forEach(x=>x.classList.toggle('on',x===b)); execDelay=+b.dataset.v; });
-$('#exSel').onchange=e=>{ const k=e.target.value; e.target.value=''; if(!k||!ws) return; const ex=EXAMPLES[k]; stopProgram(true); ws.clear(); loadTop(ex.top); if(ex.map) chooseMap(ex.map); if(ex.pen){ penOn=true; penBtnText(); } toast('예제를 불러왔어요. 되돌리려면 Ctrl+Z를 눌러요.'); };
+$('#exSel').onchange=e=>{ const k=e.target.value; e.target.value=''; if(!k||!ws) return; const ex=EXAMPLES[k]; stopProgram(true); HAND.on=false; $('#handBox').hidden=true; $('#handMan').hidden=true; ws.clear(); loadTop(ex.top); if(ex.map) chooseMap(ex.map); if(ex.pen){ penOn=true; penBtnText(); } toast('예제를 불러왔어요. 되돌리려면 Ctrl+Z를 눌러요.'); };
 
 /* ───────── 카드 길 찾기 ───────── */
 const card={seq:[],ready:[false,false,false],running:false,tok:null,cur:-1};
@@ -899,6 +972,106 @@ const cvUp=()=>{ drawing=false; if(dragBot){ dragBot=false; cv.style.cursor='gra
 cv.addEventListener('pointerup',cvUp); cv.addEventListener('pointercancel',cvUp);
 function drawDot(a,b){ const L=layerFor(curMap).draw.getContext('2d'); const k=pxcm(); L.save(); L.lineCap='round'; L.lineJoin='round'; if(drawTool==='erase'){ L.globalCompositeOperation='destination-out'; L.lineWidth=3*k; L.strokeStyle='#000'; } else if(drawTool==='road'){ L.strokeStyle='#111'; L.lineWidth=2.2*k; } else { L.strokeStyle='#e04a3f'; L.lineWidth=0.4*k; } L.beginPath(); L.moveTo(a.x,a.y); L.lineTo(b.x,b.y); L.stroke(); L.restore(); }
 
+/* ───────── AI 손 인식 (태블릿 카메라) ───────── */
+const GEST=[['fist','쥔 손','✊'],['open','편 손','✋'],['up','엄지 위로','👍'],['down','엄지 아래로','👎'],['point','검지 위로','☝️'],['v','브이','✌️'],['love','사랑해','🤟']];
+const GNAME=Object.fromEntries(GEST.map(g=>[g[0],g]));
+const HAND={on:false,g:null,recv:0,man:null,num:0,ref:null,warned:false};
+function curHand(){ if(HAND.man) return HAND.man==='none'?null:HAND.man; return (Date.now()-HAND.recv<4000&&GNAME[HAND.g])?HAND.g:null; }
+function handListen(){
+  if(!FB.ok||!FB.joined||!me.num) return;
+  if(HAND.ref&&HAND.num===me.num) return;
+  if(HAND.ref){ try{ HAND.ref.off(); }catch(e){} }
+  HAND.num=me.num; HAND.g=null; HAND.recv=0; HAND.ref=fref('hand/'+me.num);
+  HAND.ref.on('value',s=>{ const v=s.val(); if(v&&v.t){ HAND.g=v.g||null; HAND.recv=Date.now(); } else { HAND.g=null; HAND.recv=0; } });
+}
+function handStart(show){ const first=!HAND.on; HAND.on=true; HAND.warned=false; handListen(); $('#handBox').hidden=!show; renderHand(); if(first&&!(FB.ok&&FB.joined)) setTimeout(()=>toast('우리 반과 연결되어야 태블릿을 쓸 수 있어요. 손 모양 버튼으로 연습해요.',3500),300); }
+function renderHand(){
+  if($('#handBox').hidden) return;
+  const g=curHand(), fresh=Date.now()-HAND.recv<4000;
+  $('#handG').textContent=g?(GNAME[g][2]+' '+GNAME[g][1]):'손이 안 보여요';
+  const st=$('#handSt');
+  if(HAND.man){ st.className='hs'; st.textContent='손 모양 버튼으로 하는 중이에요.'; }
+  else if(fresh){ st.className='hs ok'; st.textContent=me.num+'번 태블릿과 연결됨'; }
+  else { st.className='hs'; st.textContent=(FB.ok&&FB.joined&&me.num)?('태블릿에서 손 인식 화면을 열고 '+me.num+'번을 골라요.'):'번호를 골라 우리 반에 들어와야 태블릿과 이어져요.'; }
+  $$('#handMan button').forEach(b=>b.classList.toggle('on',(HAND.man||'')===b.dataset.g&&!!b.dataset.g));
+}
+setInterval(renderHand,250);
+(function(){ const box=$('#handMan'); box.innerHTML=GEST.map(g=>'<button type="button" data-g="'+g[0]+'">'+g[2]+' '+g[1]+'</button>').join('')+'<button type="button" data-g="none">손 내리기</button><button type="button" data-g="">태블릿으로 돌아가기</button>'; box.onclick=e=>{ const b=e.target.closest('button'); if(!b) return; HAND.man=b.dataset.g||null; renderHand(); }; $('#handManBtn').onclick=()=>{ box.hidden=!box.hidden; }; })();
+
+/* ───────── 무궁화 꽃이 피었습니다 ───────── */
+const MGX={start:110,finish:1290,line:1360,tag:1440,y1:200,y2:500};
+const MG={phase:'away',until:0,lookAt:0,out:false,done:false,teacher:false,round:null,lastRep:'',lastRepT:0};
+function mgActive(){ return mode==='block'&&curMap==='mugung'; }
+function mgMission(){ if(!MG.teacher){ MG.phase='away'; MG.until=Date.now()+3500; } MG.out=false; MG.done=false; setMission({text:mgText()}); }
+function mgText(){
+  const who=MG.teacher?'선생님 술래':'연습 술래';
+  if(MG.done) return '무궁화 꽃 ('+who+'): 도착 성공! 술래를 찾았어요.';
+  if(MG.out) return '무궁화 꽃 ('+who+'): 걸렸어요! '+(MG.teacher?'다음 판을 기다려요.':'잠시 뒤 출발선으로 돌아가요.');
+  if(MG.phase==='ready') return '무궁화 꽃 ('+who+'): 곧 시작해요. 출발선에서 기다려요.';
+  if(MG.phase==='look') return '무궁화 꽃 ('+who+'): 술래가 보고 있어요! 편 손으로 멈춰요!';
+  return '무궁화 꽃 ('+who+'): 술래가 돌아섰어요. 쥔 손으로 앞으로!';
+}
+function mgReset(){ MG.out=false; MG.done=false; placeHome(); }
+function mgOut(){ MG.out=true; stopProgram(true); R.v=0; R.w=0; warnTone(); big('걸렸어요!',2200); mgReport(true); if(!MG.teacher) setTimeout(()=>{ if(mgActive()&&MG.out&&!MG.teacher) mgReset(); },2600); }
+function mgDone(){
+  MG.done=true; stopProgram(true); R.v=0; R.w=0; okTone(); big('도착! 술래를 찾았어요',2400); mgReport(true);
+  if(FB.ok&&FB.joined){ const TS=firebase.database.ServerValue.TIMESTAMP; if(MG.teacher){ try{ fref('feed').push({team:me.team,num:me.num,label:'무궁화 꽃 도착',t:TS}); }catch(e){} } if(!(board.clear[sid()]||{}).mugung) fref('clear/'+sid()+'/mugung').set(TS).catch(()=>{}); }
+  if(!MG.teacher) setTimeout(()=>{ if(mgActive()&&MG.done&&!MG.teacher) mgReset(); },3500);
+}
+function mgReport(force){
+  if(!MG.teacher||!FB.ok||!FB.joined||MG.round==null||!me.num) return;
+  const p=Math.max(0,Math.min(100,Math.round((R.x-MGX.start)/(MGX.finish-MGX.start)*100)));
+  const st=MG.done?'done':(MG.out?'out':'play'), key=st+p;
+  if(key===MG.lastRep) return; if(!force&&st==='play'&&Date.now()-MG.lastRepT<900) return;
+  MG.lastRep=key; MG.lastRepT=Date.now();
+  const o={num:me.num,team:me.team,st:st,p:p}; if(st!=='play') o.t=firebase.database.ServerValue.TIMESTAMP;
+  fref('mg/'+MG.round+'/'+sid()).update(o).catch(()=>{});
+}
+setInterval(()=>{
+  if(!mgActive()) return;
+  const now=Date.now();
+  if(!MG.teacher&&now>=MG.until){ if(MG.phase==='away'){ MG.phase='look'; MG.lookAt=now; MG.until=now+2500; } else { MG.phase='away'; MG.until=now+3000+Math.random()*3500; } }
+  if(MG.phase==='ready'&&!MG.out&&!MG.done){ const s=MAPS.mugung.start; if(Math.abs(R.x-s.x)>1||Math.abs(R.y-s.y)>1){ R.x=s.x; R.y=s.y; R.h=s.h; trail=[{x:R.x,y:R.y}]; } }
+  if(MG.phase==='look'&&!MG.out&&!MG.done&&now-MG.lookAt>800&&(R.v||R.w)) mgOut();
+  if(!MG.out&&!MG.done&&R.x>=MGX.finish) mgDone();
+  const t=$('#missionText'), txt=mgText(); if(t.textContent!==txt) t.textContent=txt;
+  mgReport(false);
+},100);
+function mgControl(c){
+  if(c&&c.on){
+    MG.teacher=true;
+    if(c.round!==MG.round){ MG.round=c.round; MG.lastRep=''; MG.out=false; MG.done=false; if(mgActive()){ stopProgram(true); placeHome(); } }
+    if(c.phase!==MG.phase){ MG.phase=c.phase; if(c.phase==='look') MG.lookAt=Date.now(); if(mgActive()&&c.phase==='away') tone(784,0.15,'triangle',0.07); if(mgActive()&&c.phase==='look') tone(330,0.3,'sawtooth',0.06); }
+  } else if(MG.teacher){ MG.teacher=false; MG.round=null; MG.phase='away'; MG.until=Date.now()+3000; MG.out=false; MG.done=false; }
+}
+function drawMugung(g){
+  const m=MAPS.mugung, look=MG.phase==='look';
+  g.fillStyle='#dcefd2'; g.fillRect(0,0,m.w,m.h);
+  g.fillStyle='#f4ecd6'; g.fillRect(0,MGX.y1,m.w,MGX.y2-MGX.y1);
+  const k=m.w/m.cm; g.fillStyle='#b9ab86'; g.font='bold 22px Malgun Gothic, sans-serif'; g.textAlign='center';
+  for(let cm=20;cm<100;cm+=20){ const x=MGX.start+cm*k; if(x>MGX.line-30) break; g.fillRect(x-1,MGX.y2-18,3,18); g.fillText(cm+'cm',x,MGX.y2+26); }
+  g.fillStyle='#ffffff'; g.fillRect(172,MGX.y1,10,MGX.y2-MGX.y1); g.fillStyle='#2e6b2e'; g.font='bold 30px Malgun Gothic, sans-serif'; g.fillText('출발',177,MGX.y1-14);
+  for(let y=MGX.y1,i=0;y<MGX.y2;y+=20,i++){ g.fillStyle=i%2?'#222':'#fff'; g.fillRect(MGX.line,y,12,20); g.fillStyle=i%2?'#fff':'#222'; g.fillRect(MGX.line+12,y,12,20); }
+  g.fillStyle='#2e6b2e'; g.fillText('도착',MGX.line+12,MGX.y1-14);
+  const tx=MGX.tag, ty=372;
+  g.save(); g.translate(tx,ty); g.scale(1.5,1.5); g.translate(-tx,-ty);
+  g.fillStyle=look?'#e04a3f':'#2e86de'; g.beginPath(); g.roundRect?g.roundRect(tx-30,ty-10,60,120,18):g.rect(tx-30,ty-10,60,120); g.fill();
+  g.fillStyle='#ffd9b3'; g.beginPath(); g.arc(tx,ty-42,34,0,Math.PI*2); g.fill();
+  if(look){ g.fillStyle='#222'; g.beginPath(); g.arc(tx-14,ty-48,5,0,Math.PI*2); g.arc(tx+2,ty-48,5,0,Math.PI*2); g.fill(); g.strokeStyle='#222'; g.lineWidth=4; g.beginPath(); g.arc(tx-6,ty-30,9,0.15*Math.PI,0.85*Math.PI); g.stroke(); }
+  else { g.fillStyle='#5a3b22'; g.beginPath(); g.arc(tx,ty-46,34,Math.PI*0.95,Math.PI*2.05); g.fill(); g.fillRect(tx-34,ty-48,68,12); }
+  g.restore();
+  const say=MG.phase==='ready'?'준비!':(look?'돌아봤다!':'무궁화 꽃이 피었습니다~');
+  g.font='bold 46px Malgun Gothic, sans-serif'; const tw=g.measureText(say).width; const bx=Math.min(tx+50,m.w-14)-tw-36, by=60;
+  g.fillStyle=look?'#fff0ee':'#ffffff'; g.strokeStyle=look?'#e04a3f':'#2e86de'; g.lineWidth=5; g.beginPath(); g.rect(bx,by,tw+36,72); g.fill(); g.stroke();
+  g.fillStyle=look?'#e04a3f':'#1f3a5f'; g.textAlign='left'; g.fillText(say,bx+18,by+52);
+  if(look){ g.strokeStyle='rgba(224,74,63,.85)'; g.lineWidth=18; g.strokeRect(9,9,m.w-18,m.h-18); }
+}
+function drawMugungTop(g){
+  const k=pxcm();
+  if(MG.out){ g.strokeStyle='#e04a3f'; g.lineWidth=14; g.lineCap='round'; const r=6*k; g.beginPath(); g.moveTo(R.x-r,R.y-r); g.lineTo(R.x+r,R.y+r); g.moveTo(R.x+r,R.y-r); g.lineTo(R.x-r,R.y+r); g.stroke(); }
+  if(MG.done){ g.strokeStyle='#2e9e44'; g.lineWidth=14; g.lineCap='round'; g.beginPath(); g.moveTo(R.x-5*k,R.y); g.lineTo(R.x-1*k,R.y+4*k); g.lineTo(R.x+6*k,R.y-5*k); g.stroke(); }
+}
+
 /* ───────── 모드 바꾸기 ───────── */
 let mode='block';
 function setMode(m){
@@ -908,7 +1081,7 @@ function setMode(m){
   mode=m; $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.m===m)); fbMine({mode:m}); $$('.mode').forEach(x=>x.classList.toggle('on',x.id==='m-'+m));
   const sb=$('#stageBar'); ['#mapSel','#rotL','#rotR','#trailBtn','#penBtn','#drawBtn'].forEach(s=>$(s).style.display=m==='sumo'?'none':'');
   if(drawMode && m==='sumo'){ drawMode=false; $('#drawBtn').classList.remove('on'); $('#drawTools').classList.remove('on'); }
-  R.led=null; R.blink=false;
+  R.led=null; R.blink=false; HAND.on=false; HAND.man=null; $('#handBox').hidden=true; $('#handMan').hidden=true;
   if(m==='block'){ chooseMap(curMap==='sumo'?'mat3':(curMap||'mat3')); blockMission(); setTimeout(()=>{ try{ Blockly.svgResize(ws); }catch(e){} },30); }
   if(m==='card'){ cardSetup(); readyUI(); renderSeq(); }
   if(m==='joy'){ $$('#ledSeg button').forEach(x=>x.classList.toggle('on',x.dataset.v==='off')); chooseMap('mat4'); joyReset(); }
@@ -926,7 +1099,7 @@ let me={team:Number(lsx.get('aion_team'))||0,num:Number(lsx.get('aion_num'))||0}
 { const m=(qs.get('as')||'').match(/^(\d{1,2})-(\d{1,2})$/); if(m) me={num:+m[1],team:+m[2]}; }  /* 시험용: 주소에 ?as=번호-모둠 */
 const sid=()=>'t'+me.team+'n'+me.num;
 const FB={ok:false,db:null,joined:false,since:Date.now()};
-const BADGE={grandma:'할머니 댁',pharmacy:'약국',card1:'카드 ➊',card2:'카드 ➋',card3:'카드 ➊+➋',road:'도로 규칙',road2:'도로 도착'};
+const BADGE={grandma:'할머니 댁',pharmacy:'약국',card1:'카드 ➊',card2:'카드 ➋',card3:'카드 ➊+➋',road:'도로 규칙',road2:'도로 도착',patrol:'거리 순찰',mugung:'무궁화 꽃'};
 let board={students:{},clear:{}}, feedItems=[];
 const fref=p=>FB.db.ref(FBASE+(p?'/'+p:''));
 function fbMine(v){ if(FB.ok&&FB.joined) fref('students/'+sid()).update(Object.assign({seen:firebase.database.ServerValue.TIMESTAMP},v)).catch(()=>{}); }
@@ -950,7 +1123,7 @@ async function fbInit(){
   if(me.team&&me.num) joinRoom(); else openJoin();
   renderLobby();
 }
-function joinRoom(){ if(!FB.ok) return; FB.joined=true; $('#meBtn').textContent=me.num+'번 ('+me.team+'모둠) 바꾸기'; renderLobby(); const s=fref('students/'+sid()); s.onDisconnect().update({online:false}); s.update({team:me.team,num:me.num,online:true,mode:mode,seen:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{}); }
+function joinRoom(){ if(!FB.ok) return; FB.joined=true; $('#meBtn').textContent=me.num+'번 ('+me.team+'모둠) 바꾸기'; renderLobby(); const s=fref('students/'+sid()); s.onDisconnect().update({online:false}); s.update({team:me.team,num:me.num,online:true,mode:mode,seen:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{}); handListen(); }
 function openJoin(){
   const pt=$('#pickTeam'), pn=$('#pickNum'); pt.textContent=''; pn.textContent=''; let tm=me.team, nm=me.num;
   const upd=()=>{ $('#joinBtn').disabled=!(tm&&nm); $('#joinBtn').textContent=(tm&&nm)?(nm+'번, '+tm+'모둠으로 들어가기'):(nm?'모둠을 골라요':'번호를 골라요'); };
@@ -991,6 +1164,7 @@ function applyControl(c){
   if(ctl.stop&&ctl.stop!==ctlSeen.stop){ ctlSeen.stop=ctl.stop; if(!ctlFirst){ stopAll(); toast('선생님이 모두 멈췄어요.'); } }
   if(ctl.notice&&ctl.notice.t!==ctlSeen.notice){ ctlSeen.notice=ctl.notice.t; if(ctl.notice.text&&(!ctlFirst||Date.now()-ctl.notice.t<10*60000)) showNotice(ctl.notice.text); }
   if(ctl.lock){ $('#lockScr').hidden=false; $('#lockMsg').textContent=ctl.lockMsg||''; stopAll(); } else $('#lockScr').hidden=true;
+  mgControl(ctl.mugung);
   ctlFirst=false;
 }
 function stopAll(){ stopProgram(true); if(card.tok) card.tok.stop=true; joy.keys={}; joy.drag=false; joySet(0,0); SUMO.pad={}; if(!SUMO.net) SUMO.on=false; R.v=0; R.w=0; buzzOff(); }
@@ -1002,7 +1176,7 @@ function codeSummary(){
   if(mode!=='block'||!ws) return '';
   try{
     const out=[];
-    const walk=b=>{ while(b&&out.length<40){ let s=''; switch(b.type){ case 'aion_move': s=(DIRNAME[b.getFieldValue('DIR')]||'랜덤')+' '+b.getFieldValue('SPD')+'% '+(b.getFieldValue('TIME')==='-1'?'계속':b.getFieldValue('TIME')+'초'); break; case 'aion_stop': s='멈추기'; break; case 'loop_n': s=b.getFieldValue('N')+'번 반복 ['; break; case 'loop_forever': s='계속 반복 ['; break; case 'loop_break': s='반복 중단'; break; case 'wait_s': s=b.getFieldValue('S')+'초 기다리기'; break; case 'restart': s='처음부터 다시'; break; case 'led_on': s='LED 켜기'; break; case 'led_blink': s='LED 깜빡'; break; case 'led_off': s='LED 끄기'; break; case 'buzz': s='버저 '+b.getFieldValue('N'); break; case 'pen_set': s='펜 '+(b.getFieldValue('P')==='down'?'내리기':'올리기'); break; default: s=b.type; } out.push(s); if(b.type==='loop_n'||b.type==='loop_forever'){ walk(b.getInputTargetBlock('DO')); out.push(']'); } b=b.getNextBlock(); } };
+    const walk=b=>{ while(b&&out.length<40){ let s=''; switch(b.type){ case 'aion_move': s=(DIRNAME[b.getFieldValue('DIR')]||'랜덤')+' '+b.getFieldValue('SPD')+'% '+(b.getFieldValue('TIME')==='-1'?'계속':b.getFieldValue('TIME')+'초'); break; case 'aion_stop': s='멈추기'; break; case 'loop_n': s=b.getFieldValue('N')+'번 반복 ['; break; case 'loop_forever': s='계속 반복 ['; break; case 'loop_break': s='반복 중단'; break; case 'wait_s': s=b.getFieldValue('S')+'초 기다리기'; break; case 'restart': s='처음부터 다시'; break; case 'led_on': s='LED 켜기'; break; case 'led_blink': s='LED 깜빡'; break; case 'led_off': s='LED 끄기'; break; case 'buzz': s='버저 '+b.getFieldValue('N'); break; case 'pen_set': s='펜 '+(b.getFieldValue('P')==='down'?'내리기':'올리기'); break; case 'line_cross': s=b.getFieldValue('NTH')+'번째 교차로까지'; break; case 'turn_dir': s=b.getFieldValue('D')==='L'?'좌회전':'우회전'; break; case 'hand_start': s='손 인식 시작'; break; case 'hand_if': s='만일 '+((GNAME[b.getFieldValue('G')]||[0,'?'])[1])+' ['; break; case 'piano': s='피아노 '+b.getFieldValue('S'); break; default: s=b.type; } out.push(s); if(b.type==='loop_n'||b.type==='loop_forever'||b.type==='hand_if'){ walk(b.getInputTargetBlock('DO')); out.push(']'); } b=b.getNextBlock(); } };
     ws.getTopBlocks(true).filter(b=>b.type==='aion_start').forEach(h=>walk(h.getNextBlock()));
     return out.join(', ').replace(/\[, /g,'[ ').replace(/, \]/g,' ]').slice(0,240);
   }catch(e){ return ''; }
