@@ -127,15 +127,15 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
 .dpad button.on{background:var(--navy);border-color:var(--navy);color:#fff}
 .dpad .u{grid-column:2;grid-row:1}.dpad .l{grid-column:1;grid-row:2}.dpad .d{grid-column:2;grid-row:2}.dpad .r{grid-column:3;grid-row:2}
 #myColor{font-weight:800;font-size:17px}
-#handBox{position:absolute;left:10px;top:10px;z-index:5;background:rgba(255,255,255,.96);border:2px solid #3b5bb5;border-radius:12px;padding:8px 10px;font-size:14px;width:min(300px,62%);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+#handBox{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:6px 12px;background:#eef2fc;border-bottom:1px solid var(--line);font-size:14px}
 #handBox .ht{font-weight:800;color:#3b5bb5}
-#handBox .hg{font-size:24px;font-weight:900;margin:2px 0}
+#handBox .hg{font-size:20px;font-weight:900}
 #handBox .hs{font-size:13px;color:var(--muted);line-height:1.45}
 #handBox .hs.ok{color:#1e7b39;font-weight:700}
-#handMan{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+#handMan{display:flex;flex-wrap:wrap;gap:4px;flex-basis:100%}
 #handMan button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:3px 6px;font-size:13px;font-weight:700;cursor:pointer}
 #handMan button.on{background:#3b5bb5;border-color:#3b5bb5;color:#fff}
-.linkbtn{border:0;background:none;color:#3b5bb5;text-decoration:underline;font-size:13px;cursor:pointer;padding:0;margin-top:4px}
+.linkbtn{border:0;background:none;color:#3b5bb5;text-decoration:underline;font-size:13px;cursor:pointer;padding:0;margin-left:auto}
 @media (max-width:900px){main{flex-direction:column}#left{min-height:430px}#right{min-height:420px}}
 @media (max-width:600px){header .note{display:none}}
 </style>
@@ -285,15 +285,14 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
       <label class="btn" id="upLbl" style="display:none">지도 사진 고르기<input type="file" id="upFile" accept="image/*" hidden></label>
     </div>
     <div id="mission"><span id="missionText"></span><span class="res" id="missionRes"></span></div>
-    <div id="stageWrap"><canvas id="stage"></canvas><div id="big"></div><div id="ticker"></div>
-      <div id="handBox" hidden>
-        <div class="ht">AI 손 인식 (태블릿 카메라)</div>
-        <div class="hg" id="handG">손이 안 보여요</div>
-        <div class="hs" id="handSt"></div>
-        <button class="linkbtn" id="handManBtn" type="button">태블릿이 안 될 때: 손 모양 버튼으로 하기</button>
-        <div id="handMan" hidden></div>
-      </div>
+    <div id="handBox" hidden>
+      <span class="ht">AI 손 인식 (태블릿)</span>
+      <span class="hg" id="handG">손이 안 보여요</span>
+      <span class="hs" id="handSt"></span>
+      <button class="linkbtn" id="handManBtn" type="button">태블릿이 안 될 때: 손 모양 버튼</button>
+      <div id="handMan" hidden></div>
     </div>
+    <div id="stageWrap"><canvas id="stage"></canvas><div id="big"></div><div id="ticker"></div></div>
     <div id="status"><span id="stPos"></span><span id="stMove"></span><span id="stLed"></span></div>
   </section>
 </main>
