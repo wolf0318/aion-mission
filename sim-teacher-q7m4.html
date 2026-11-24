@@ -131,7 +131,7 @@ $('#gform').addEventListener('submit',async e=>{ e.preventDefault(); const msg=$
 window.addEventListener('load',()=>{ if(gateOK()) unlock(); else $('#gpin').focus(); });
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const BADGE={grandma:'할머니 댁',pharmacy:'약국',card1:'카드 ➊',card2:'카드 ➋',card3:'카드 ➊+➋',road:'도로 규칙',road2:'도로 도착',patrol:'거리 순찰',mugung:'무궁화 꽃'};
+const BADGE={grandma:'할머니 댁',pharmacy:'약국',card1:'카드 ➊',card2:'카드 ➋',card3:'카드 ➊+➋',road:'도로 규칙',road2:'도로 도착',patrol:'거리 순찰',rja:'ㄹ자 달리기',mugung:'무궁화 꽃'};
 const GN={fist:'✊ 쥔 손',open:'✋ 편 손',up:'👍 엄지 위로',down:'👎 엄지 아래로',point:'☝️ 검지 위로',v:'✌️ 브이',love:'🤟 사랑해'};
 const MODEN={block:'블록 코딩',card:'카드 길 찾기',joy:'조이스틱',sumo:'씨름'};
 const MAPN={mat2:'놀이 자료 2',mat3:'놀이 자료 3',mat4:'놀이 자료 4',ex:'소리풍경 예시',a3:'A3 빈 지도',paper:'흰 종이',mine:'내 지도 사진',sumo:'경기장',mugung:'무궁화 꽃'};

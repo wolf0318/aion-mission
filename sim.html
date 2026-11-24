@@ -79,6 +79,10 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
 #mission{display:none;padding:8px 12px;background:#eaf4ff;border-bottom:1px solid var(--line);font-size:15px;font-weight:700;color:var(--navy)}
 #mission.on{display:block}
 #mission .res{margin-left:8px}
+#m4pick{display:inline-flex;gap:4px;margin-right:10px;vertical-align:middle}
+#m4pick[hidden]{display:none}
+#m4pick button{border:2px solid #9cc3ee;background:#fff;border-radius:999px;padding:2px 12px;font:inherit;font-size:14px;font-weight:800;color:var(--navy);cursor:pointer}
+#m4pick button.on{background:var(--navy);border-color:var(--navy);color:#fff}
 #status{padding:6px 12px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);background:#f7f9fc;display:flex;gap:10px;flex-wrap:wrap}
 .hbtn{border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:999px;padding:6px 12px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
 .hbtn:hover{background:rgba(255,255,255,.12)}
@@ -288,7 +292,7 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
       </span>
       <label class="btn" id="upLbl" style="display:none">지도 사진 고르기<input type="file" id="upFile" accept="image/*" hidden></label>
     </div>
-    <div id="mission"><span id="missionText"></span><span class="res" id="missionRes"></span></div>
+    <div id="mission"><span id="m4pick" hidden><button type="button" data-v="patrol">순찰 미션</button><button type="button" data-v="rja">도전: ㄹ자 달리기</button></span><span id="missionText"></span><span class="res" id="missionRes"></span></div>
     <div id="handBox" hidden>
       <span class="ht">AI 손 인식 (태블릿)</span>
       <span class="hg" id="handG">손이 안 보여요</span>
@@ -477,6 +481,8 @@ function statusLine(){
 /* ───────── 미션 표시와 판정 ───────── */
 let mission=null; // {text, check:fn, marks:[{x,y,name,r}]}
 let visited={};
+let M4='patrol';
+function m4ui(){ const pk=$('#m4pick'); if(!pk) return; pk.hidden=!(mode==='block'&&curMap==='mat4'); pk.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===M4)); }
 function missionReset(){ visited={}; $('#missionRes').textContent=''; }
 function setMission(ms){ mission=ms; const box=$('#mission'); if(!ms){ box.classList.remove('on'); return; } box.classList.add('on'); $('#missionText').textContent=ms.text; $('#missionRes').textContent=''; }
 function near(p,rcm){ return Math.hypot(R.x-p.x,R.y-p.y)<=rcm*pxcm(); }
@@ -488,9 +494,11 @@ function blockMission(){
   if(curMap==='mat3') setMission({key:'grandma',label:'할머니 댁 다녀오기',text:'미션: 할머니 댁에 갔다가 출발 자리로 돌아와요.',marks:[{...PLACES.grandma,r:6},{x:MAPS.mat3.start.x,y:MAPS.mat3.start.y,name:'출발',r:6}],check:()=>{ if(!visited['할머니 댁']) return '할머니 댁까지 가지 못했어요. 시간이나 속도를 바꿔 봐요.'; if(!near(MAPS.mat3.start,6)) return '할머니 댁에는 갔어요! 돌아오는 길을 다시 맞춰 봐요.'; return true; }});
   else if(curMap==='mat2') setMission({key:'pharmacy',label:'약국 찾아가기',text:'미션: 출발 자리에서 약국까지 가요. (속도와 시간을 맞춰요)',marks:[{...PLACES.pharmacy,r:5}],check:()=>near(PLACES.pharmacy,5)?true:'약국에 닿지 못했어요. 시간이나 속도를 바꿔 봐요.'});
   else if(curMap==='paper') setMission({text:'그림 그리기: [펜 꽂기]를 켜고 제자리 회전이나 반복 블록으로 그림을 그려요.'});
-  else if(curMap==='mat4') setMission({key:'patrol',label:'거리 순찰',text:'순찰 미션: 반복 블록으로 네모 도로를 한 바퀴 돌고 출발 자리로 돌아와요.',marks:[{x:162,y:313,name:'교차로 1',r:5},{x:755,y:313,name:'교차로 2',r:5},{x:755,y:820,name:'교차로 3',r:5},{x:162,y:820,name:'출발',r:5,hide:true}],check:()=>{ const n=['교차로 1','교차로 2','교차로 3'].filter(k=>visited[k]).length; if(n<3) return '교차로 '+n+'곳만 지났어요. 반복 횟수와 방향을 확인해 봐요.'; if(!near({x:162,y:820},5)) return '세 교차로는 지났어요! 출발 자리까지 돌아와요.'; const tips=[]; if(!usedBlock('loop_n')) tips.push('반복하기 블록으로 줄여 봐요'); if(R.led) tips.push('순찰이 끝나면 LED를 꺼요'); if(tips.length) setTimeout(()=>toast('순찰 성공! '+tips.join(', ')+'.',4000),900); return true; }});
+  else if(curMap==='mat4'&&M4==='rja') setMission({key:'rja',label:'ㄹ자 달리기',text:'도전 미션: ㄹ자로 달려 깃발 도착점까지 가요.',marks:[{x:162,y:313,name:'교차로 1',r:5},{x:755,y:313,name:'교차로 2',r:5},{x:755,y:820,name:'교차로 3',r:5},{x:1338,y:820,name:'교차로 4',r:5},{x:1338,y:313,name:'도착점',r:5}],check:()=>{ const n=['교차로 1','교차로 2','교차로 3','교차로 4'].filter(k=>visited[k]).length; if(n<4) return 'ㄹ자 길의 교차로 '+n+'곳만 지났어요. 우회전과 좌회전 순서를 확인해 봐요.'; if(!near({x:1338,y:313},5)) return '교차로 4곳은 지났어요! 마지막으로 깃발 도착점까지 가요.'; const nl=ws?ws.getAllBlocks(false).filter(b=>b.type==='loop_n').length:2; if(nl<2) setTimeout(()=>toast('ㄹ자 성공! 반복하기 블록 2개로 더 짧게 만들어 봐요.',4500),900); return true; }});
+  else if(curMap==='mat4') setMission({key:'patrol',label:'거리 순찰',text:'순찰 미션: 반복 블록으로 네모 도로를 한 바퀴 돌고 출발 자리로 돌아와요.',marks:[{x:162,y:313,name:'교차로 1',r:5},{x:755,y:313,name:'교차로 2',r:5},{x:755,y:820,name:'교차로 3',r:5},{x:162,y:820,name:'출발',r:5,hide:true}],check:()=>{ const n=['교차로 1','교차로 2','교차로 3'].filter(k=>visited[k]).length; if(n<3) return '교차로 '+n+'곳만 지났어요. 반복 횟수와 방향을 확인해 봐요.'; if(!near({x:162,y:820},5)) return '세 교차로는 지났어요! 출발 자리까지 돌아와요.'; const tips=[]; if(!usedBlock('loop_n')) tips.push('반복하기 블록으로 줄여 봐요'); if(R.led) tips.push('순찰이 끝나면 LED를 꺼요'); setTimeout(()=>toast('순찰 성공! '+(tips.length?tips.join(', ')+'. ':'')+'다음 도전: 위쪽 [도전: ㄹ자 달리기]',4500),900); return true; }});
   else if(curMap==='mugung') mgMission();
   else setMission(null);
+  m4ui();
 }
 function usedBlock(t){ try{ return !!ws && ws.getAllBlocks(false).some(b=>b.type===t); }catch(e){ return false; } }
 
@@ -1111,7 +1119,7 @@ let me={team:Number(lsx.get('aion_team'))||0,num:Number(lsx.get('aion_num'))||0}
 { const m=(qs.get('as')||'').match(/^(\d{1,2})-(\d{1,2})$/); if(m) me={num:+m[1],team:+m[2]}; }  /* 시험용: 주소에 ?as=번호-모둠 */
 const sid=()=>'t'+me.team+'n'+me.num;
 const FB={ok:false,db:null,joined:false,since:Date.now()};
-const BADGE={grandma:'할머니 댁',pharmacy:'약국',card1:'카드 ➊',card2:'카드 ➋',card3:'카드 ➊+➋',road:'도로 규칙',road2:'도로 도착',patrol:'거리 순찰',mugung:'무궁화 꽃'};
+const BADGE={grandma:'할머니 댁',pharmacy:'약국',card1:'카드 ➊',card2:'카드 ➋',card3:'카드 ➊+➋',road:'도로 규칙',road2:'도로 도착',patrol:'거리 순찰',rja:'ㄹ자 달리기',mugung:'무궁화 꽃'};
 let board={students:{},clear:{}}, feedItems=[];
 const fref=p=>FB.db.ref(FBASE+(p?'/'+p:''));
 function fbMine(v){ if(FB.ok&&FB.joined) fref('students/'+sid()).update(Object.assign({seen:firebase.database.ServerValue.TIMESTAMP},v)).catch(()=>{}); }
@@ -1197,6 +1205,7 @@ setInterval(()=>{ if(!FB.ok||!FB.joined) return; const st={mode:mode,map:curMap,
 function sendSnap(){ if(!FB.ok||!FB.joined) return; try{ const W=360, H=Math.max(1,Math.round(W*cv.height/cv.width)); const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').drawImage(cv,0,0,W,H); fref('snap/'+sid()).set({img:c.toDataURL('image/jpeg',0.6),t:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{}); }catch(e){} }
 
 /* ───────── 5, 6차시 수업 화면 ───────── */
+$$('#m4pick button').forEach(b=>b.onclick=()=>{ if(M4===b.dataset.v) return; M4=b.dataset.v; stopProgram(true); placeHome(); blockMission(); toast(M4==='rja'?'ㄹ자 달리기: 깃발 도착점까지 가요.':'순찰 미션으로 돌아왔어요.'); });
 function syncSteps(){ if(!LESSON) return; $$('.tab.step').forEach(t=>t.classList.toggle('on',t.dataset.m===mode&&(mode==='sumo'||t.dataset.map===curMap))); }
 if(LESSON){
   $('#tabs').innerHTML='<button class="tab step" data-m="block" data-map="mat4" type="button"><small>5차시 ①</small><b>거리 순찰</b></button>'
