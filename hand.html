@@ -33,7 +33,7 @@ h2{font-size:18px;margin:0 0 10px;color:var(--navy)}
 #gNow .e{font-size:78px;display:block;line-height:1.1}
 #sendSt{text-align:center;font-weight:700;font-size:16px;color:var(--muted);min-height:24px}
 #sendSt.ok{color:var(--green)}
-.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
 .chip{border:2px solid var(--line);border-radius:14px;padding:10px 2px;text-align:center;font:inherit;font-weight:800;font-size:16px;background:#fff;color:var(--ink);cursor:pointer;touch-action:manipulation}
 .chip .e{font-size:36px;display:block;line-height:1.15}
 .chip.on{border-color:var(--blue);background:#e9eefc;color:var(--blue)}
@@ -41,6 +41,17 @@ h2{font-size:18px;margin:0 0 10px;color:var(--navy)}
 .chip.cam{background:#f2f5f9;color:var(--muted)}
 #touchSt{display:none;text-align:center;font-weight:800;color:#a35f00;margin-top:6px}
 #touchSt.on{display:block}
+#teachBox{margin-top:14px;border-top:2px dashed var(--line);padding-top:12px}
+#teachBox h3{margin:0 0 4px;font-size:18px}
+.tgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.tbtn{border:2px solid #b9c6e6;border-radius:12px;padding:8px 2px;background:#f6f8ff;font:inherit;font-size:14px;font-weight:800;color:var(--ink);cursor:pointer;touch-action:manipulation}
+.tbtn .e{font-size:26px;display:block}
+.tbtn .n{display:block;font-size:13px;color:var(--muted);font-weight:700}
+.tbtn.has{border-color:var(--green);background:#ebf8ef}
+.tbtn.busy{border-color:#e08a00;background:#fff3d6}
+#aiMode{font-weight:800;text-align:center;margin-top:4px;color:var(--navy)}
+#aiMode.mine{color:#1e7b39}
+#teachSt{font-weight:800;color:#a35f00;min-height:22px;margin-top:6px}
 #me{font-size:20px;font-weight:800}
 </style>
 </head>
@@ -60,9 +71,18 @@ h2{font-size:18px;margin:0 0 10px;color:var(--navy)}
     <div id="me"></div>
     <div id="gNow"><span class="e">✋</span>손을 보여 줘요</div>
     <div id="sendSt"></div>
+    <div id="aiMode"></div>
     <div class="hint" id="fing" style="text-align:center;margin-top:4px"></div>
+    <div style="font-weight:800;margin-top:10px">👆 직접 누르기 <span style="font-weight:600;color:var(--muted);font-size:14px">(AI가 틀릴 때 눌러서 보내요)</span></div>
     <div id="touchSt">지금은 카메라가 본 손 대신 누른 손 모양을 보내요</div>
     <div class="chips" id="chips"></div>
+    <div id="teachBox">
+      <h3>🧠 AI에게 내 손 가르치기</h3>
+      <div class="hint" style="margin:0">모양을 누르고 그 손 모양을 2초 동안 보여 주면 AI가 내 손을 배워요. 두 가지 이상 가르치면 내가 가르친 대로 알아봐요. (무궁화 꽃 놀이는 쥔 손, 편 손만 가르쳐도 돼요)</div>
+      <div class="tgrid" id="tgrid"></div>
+      <div id="teachSt"></div>
+      <div class="row" style="margin-top:6px"><button class="btn" id="teachClear" type="button">가르친 것 모두 지우기</button></div>
+    </div>
     <p class="hint">손을 카메라에서 한 뼘 정도 떨어뜨리고, 손 전체가 화면에 들어오게 해요. 밝은 곳에서 잘 알아봐요.<br><b>AI가 잘 못 알아보면 위 손 모양을 직접 눌러요.</b> 다시 카메라로 하려면 [카메라로 알아보기]를 눌러요.</p>
   </section>
 </main>
@@ -114,6 +134,19 @@ window.__classify=classify;
 /* ───── 화면 ───── */
 function buildPick(){ const box=$('#pick'); box.textContent=''; for(let i=1;i<=25;i++){ const b=document.createElement('button'); b.type='button'; b.textContent=i; b.setAttribute('aria-pressed',i===num?'true':'false'); b.onclick=()=>setNum(i); box.appendChild(b); } }
 let touchMode=false;
+/* ───── 내 손 가르치기 (k-최근접 이웃) ───── */
+const TEACH_N=30, TEACH_MAX=120;
+let TR={}; try{ TR=JSON.parse(lsx.get('aion_hand_train')||'{}')||{}; }catch(e){ TR={}; }
+const TEACH={g:null,left:0,wait:0};
+function feat(lm,aspect){ const a=aspect||1, P=lm.map(p=>[p.x*a,p.y,(p.z||0)*a]); const s=Math.hypot(P[9][0]-P[0][0],P[9][1]-P[0][1])||1e-6; const f=[]; for(let i=1;i<21;i++){ f.push((P[i][0]-P[0][0])/s,(P[i][1]-P[0][1])/s,0.5*(P[i][2]-P[0][2])/s); } return f.map(v=>Math.round(v*1000)/1000); }
+function mirrorF(f){ return f.map((v,i)=>i%3===0?-v:v); }
+function trainedKeys(){ return GEST.map(g=>g[0]).filter(k=>TR[k]&&TR[k].length>=10); }
+function knn(f){ const ks=trainedKeys(); if(ks.length<2) return null; const all=[]; for(const k of ks) for(const v of TR[k]){ let d=0; for(let i=0;i<f.length;i++){ const t=f[i]-v[i]; d+=t*t; } all.push([d,k]); } all.sort((a,b)=>a[0]-b[0]); const sc={}; all.slice(0,7).forEach(([d,k])=>sc[k]=(sc[k]||0)+1/(Math.sqrt(d)+0.05)); return Object.entries(sc).sort((a,b)=>b[1]-a[1])[0][0]; }
+function saveTR(){ lsx.set('aion_hand_train',JSON.stringify(TR)); }
+function teachStep(f){ if(!TEACH.g) return; if(Date.now()<TEACH.wait){ $('#teachSt').textContent=GN[TEACH.g][2]+' '+GN[TEACH.g][1]+' 모양을 보여 줘요. 곧 배워요!'; return; } const arr=TR[TEACH.g]||(TR[TEACH.g]=[]); arr.push(f,mirrorF(f)); while(arr.length>TEACH_MAX*2) arr.shift(); TEACH.left--; $('#teachSt').textContent=GN[TEACH.g][1]+' 배우는 중... '+Math.round(100*(TEACH_N-TEACH.left)/TEACH_N)+'%'; if(TEACH.left<=0){ const g=TEACH.g; TEACH.g=null; saveTR(); hist=[]; $('#teachSt').textContent=GN[g][2]+' '+GN[g][1]+' 다 배웠어요!'+(trainedKeys().length<2?' 다른 모양도 하나 더 가르쳐요.':''); renderTeach(); } }
+function renderTeach(){ const box=$('#tgrid'); if(!box) return; box.innerHTML=GEST.map(g=>{ const n=Math.round(((TR[g[0]]||[]).length)/2); return '<button type="button" class="tbtn'+(n>=5?' has':'')+(TEACH.g===g[0]?' busy':'')+'" data-t="'+g[0]+'"><span class="e">'+g[2]+'</span>'+g[1]+'<span class="n">'+(n?n+'번 배움':'아직 안 배움')+'</span></button>'; }).join('');
+  box.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{ if(!running){ $('#teachSt').textContent='카메라를 먼저 켜요.'; return; } if(touchMode){ touchMode=false; renderNow(); } TEACH.g=b.dataset.t; TEACH.left=TEACH_N; TEACH.wait=Date.now()+1500; renderTeach(); });
+  const ks=trainedKeys(), m=$('#aiMode'); if(m){ m.className=ks.length>=2?'mine':''; m.textContent=ks.length>=2?('🧠 내가 가르친 AI로 알아봐요 ('+ks.map(k=>GN[k][1]).join(', ')+')'):'기본 AI로 알아봐요'; } }
 function buildChips(){ $('#chips').innerHTML=GEST.map(g=>'<button type="button" class="chip" data-g="'+g[0]+'"><span class="e">'+g[2]+'</span>'+g[1]+'</button>').join('')+'<button type="button" class="chip cam" id="camBack"><span class="e">📷</span>카메라로 알아보기</button>';
   document.querySelectorAll('.chip[data-g]').forEach(b=>b.onclick=()=>{ touchMode=true; stable=b.dataset.g; hist=[]; renderNow(); pushNow(); setSendSt(); });
   $('#camBack').onclick=()=>{ touchMode=false; hist=[]; stable=null; renderNow(); pushNow(); setSendSt(); }; }
@@ -178,11 +211,13 @@ function onResults(r){
   const v=$('#cam'), c=$('#ov'); const W=v.videoWidth||640, H=v.videoHeight||480; if(c.width!==W) c.width=W; if(c.height!==H) c.height=H;
   const g=c.getContext('2d'); g.clearRect(0,0,W,H);
   const lm=r.multiHandLandmarks&&r.multiHandLandmarks[0];
-  const raw=lm?classify(lm,W/H):null;
+  let raw=lm?classify(lm,W/H):null;
+  if(lm){ const f=feat(lm,W/H); if(TEACH.g) teachStep(f); const kr=knn(f); if(kr) raw=kr; }
   window.__last={lm:!!lm,raw:raw};
   const fn=['엄지','검지','중지','약지','새끼'], fl=lm&&classify.last?fn.filter((x,i)=>classify.last[i]):null; $('#fing').textContent=lm?('AI가 본 펴진 손가락: '+(fl.length?fl.join(', '):'없음')):'AI가 손을 찾는 중이에요.';
   if(window.__testHold) return;
-  if(lm){ g.strokeStyle='#3ddc6f'; g.lineWidth=4; const L=[[0,1,2,3,4],[0,5,6,7,8],[5,9,10,11,12],[9,13,14,15,16],[13,17,18,19,20],[0,17]]; for(const s of L){ g.beginPath(); s.forEach((i,k)=>{ const x=lm[i].x*W, y=lm[i].y*H; if(k) g.lineTo(x,y); else g.moveTo(x,y); }); g.stroke(); } g.fillStyle='#ffd400'; for(const p of lm){ g.beginPath(); g.arc(p.x*W,p.y*H,5,0,Math.PI*2); g.fill(); } }
+  if(lm){ g.strokeStyle=TEACH.g?'#ffb020':'#3ddc6f'; g.lineWidth=4; const L=[[0,1,2,3,4],[0,5,6,7,8],[5,9,10,11,12],[9,13,14,15,16],[13,17,18,19,20],[0,17]]; for(const s of L){ g.beginPath(); s.forEach((i,k)=>{ const x=lm[i].x*W, y=lm[i].y*H; if(k) g.lineTo(x,y); else g.moveTo(x,y); }); g.stroke(); } g.fillStyle='#ffd400'; for(const p of lm){ g.beginPath(); g.arc(p.x*W,p.y*H,5,0,Math.PI*2); g.fill(); } }
+  if(TEACH.g) return;
   feed(raw);
 }
 function feed(raw){
@@ -196,7 +231,9 @@ window.__feed=feed;
 $('#camBtn').onclick=startCam;
 $('#flipBtn').onclick=()=>{ facing=facing==='user'?'environment':'user'; $('#flipBtn').textContent=facing==='user'?'뒤쪽 카메라로 바꾸기':'앞쪽 카메라로 바꾸기'; if(running||stream) startCam(); };
 document.addEventListener('visibilitychange',()=>{ if(document.hidden&&myRef&&fbOk) myRef.remove().catch(()=>{}); else if(!document.hidden) pushNow(); });
-buildPick(); buildChips(); renderNow(); showMain();
+buildPick(); buildChips(); renderNow(); showMain(); renderTeach();
+$('#teachClear').onclick=()=>{ const b=$('#teachClear'); if(!b.dataset.arm){ b.dataset.arm='1'; b.textContent='한 번 더 누르면 지워요'; setTimeout(()=>{ delete b.dataset.arm; b.textContent='가르친 것 모두 지우기'; },3000); return; } delete b.dataset.arm; b.textContent='가르친 것 모두 지우기'; TR={}; TEACH.g=null; saveTR(); hist=[]; $('#teachSt').textContent='지웠어요. 다시 가르쳐 봐요.'; renderTeach(); };
+window.__TR=()=>TR; window.__knn=knn; window.__feat=feat;
 </script>
 </body>
 </html>
