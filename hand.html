@@ -85,13 +85,13 @@ function classify(lm,aspect){
   const d=(i,j)=>Math.hypot(P[i].x-P[j].x,P[i].y-P[j].y,P[i].z-P[j].z);
   const ang=(a1,b1,c1)=>{ const u={x:P[b1].x-P[a1].x,y:P[b1].y-P[a1].y,z:P[b1].z-P[a1].z}, v={x:P[c1].x-P[b1].x,y:P[c1].y-P[b1].y,z:P[c1].z-P[b1].z}; const n=Math.hypot(u.x,u.y,u.z)*Math.hypot(v.x,v.y,v.z)||1e-9; return Math.acos(Math.max(-1,Math.min(1,(u.x*v.x+u.y*v.y+u.z*v.z)/n)))*180/Math.PI; };
   const palm=d(0,9)||1e-9;
-  const fing=(m,p,t)=>d(0,t)>d(0,p)*1.1&&ang(m,p,t)<45;
+  const fing=(m,p,t)=>d(0,t)>d(0,p)*1.05&&ang(m,p,t)<60;
   const idx=fing(5,6,8), mid=fing(9,10,12), rng=fing(13,14,16), pky=fing(17,18,20);
   const thumb=ang(2,3,4)<40&&d(4,9)>0.75*palm&&d(4,6)>0.6*palm;
   const nF=idx+mid+rng+pky;
   classify.last=[thumb,idx,mid,rng,pky];
   const vx=P[4].x-P[2].x, vy=P[4].y-P[2].y, vl=Math.hypot(vx,vy)||1e-9;
-  if(nF===4||(nF===3&&thumb&&!(idx&&mid&&!rng))) return 'open';
+  if(nF>=3) return 'open';
   if(idx&&pky&&!mid&&!rng) return 'love';
   if(idx&&mid&&!rng&&!pky) return 'v';
   if(idx&&!mid&&!rng&&!pky){ const iy=P[8].y-P[5].y, il=Math.hypot(P[8].x-P[5].x,iy)||1e-9; return iy<-0.5*il?'point':null; }
@@ -136,7 +136,7 @@ async function initHands(){
   camMsg('손 인식 프로그램을 불러오는 중이에요.<br><small>처음에는 30초쯤 걸릴 수 있어요.</small>');
   if(!window.Hands) await loadScript(MP+'hands.js');
   const h=new window.Hands({locateFile:f=>MP+f});
-  h.setOptions({maxNumHands:1,modelComplexity:qs.get('q')==='1'?1:0,minDetectionConfidence:0.6,minTrackingConfidence:0.5,selfieMode:false});
+  h.setOptions({maxNumHands:1,modelComplexity:qs.get('q')==='0'?0:1,minDetectionConfidence:0.6,minTrackingConfidence:0.5,selfieMode:false});
   h.onResults(onResults);
   await h.initialize();
   hands=h; return h;

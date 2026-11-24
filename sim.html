@@ -129,6 +129,9 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
 .pl{font-weight:700;font-size:15px;padding:2px 0}
 .pl.me span{background:#ffe680;border-radius:6px;padding:1px 6px}
 .pl.empty{color:#9aa7b6;font-weight:600}
+.pl small{font-weight:600;color:#5b6b7b}
+.mvbtn{margin-top:6px;border:2px solid currentColor;background:#fff;border-radius:999px;padding:3px 12px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+.side.a .mvbtn{color:#2463d6}.side.b .mvbtn{color:#d6372c}
 .ctlrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .dpad{display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,50px);gap:6px;touch-action:none;user-select:none;-webkit-user-select:none}
 .dpad button{border:1px solid var(--line);border-radius:12px;background:#fff;font-size:24px;font-weight:800;cursor:pointer;touch-action:none;color:var(--ink)}
@@ -253,7 +256,7 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
         <h2>자리 뺏기 씨름</h2>
         <div id="sumoLobby">
           <div class="hint" id="lobbyMsg">상대 아이온을 경기장 밖으로 밀어내면 이겨요.</div>
-          <div class="row"><button class="btn go" id="mk1v1" type="button">1:1 방 만들기</button><button class="btn go" id="mkTeam" type="button">모둠 팀전 방 만들기 (최대 4 대 4)</button></div>
+          <div class="row"><button class="btn go" id="mk1v1" type="button">1:1 방 만들기</button><button class="btn go" id="mkTeam" type="button">팀전 방 만들기 (최대 4 대 4)</button></div>
           <div class="lbl" style="margin-top:10px">들어갈 수 있는 방</div>
           <div class="roomlist" id="roomList"></div>
           <div class="lbl">대기실에 있는 친구</div>
@@ -310,7 +313,7 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
 <div id="join" hidden>
   <div class="joinbox">
     <h2>내 번호와 모둠을 골라요</h2>
-    <div class="hint">번호를 먼저 누르고, 내 모둠을 눌러요. 이름은 쓰지 않아요.<br>씨름 팀전에서는 같은 모둠 친구와 한 편이 돼요.</div>
+    <div class="hint">번호를 먼저 누르고, 내 모둠을 눌러요. 이름은 쓰지 않아요.<br>씨름 팀전에서는 방에 들어가서 파랑, 빨강 편을 골라요.</div>
     <div class="lbl">① 번호</div><div class="pick" id="pickNum"></div>
     <div class="lbl">② 모둠</div><div class="pick" id="pickTeam"></div>
     <div class="row"><button class="btn go" id="joinBtn" type="button" disabled>번호를 골라요</button><button class="btn" id="joinSkip" type="button">혼자 연습하기</button></div>
@@ -798,7 +801,7 @@ function renderSumo(g){
   g.fillStyle='#cfe3f2'; g.beginPath(); g.moveTo(A.x,A.y+A.s); g.lineTo(A.x+A.s,A.y); g.lineTo(A.x+A.s,A.y+A.s); g.closePath(); g.globalAlpha=0.5; g.fill(); g.globalAlpha=1;
   g.fillStyle='#9db8cf'; g.font='bold 120px Arial, sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('AION',450,450); g.textBaseline='alphabetic';
   g.fillStyle='#5b6b7b'; g.font='bold 28px Malgun Gothic, sans-serif';
-  g.fillText(r?(r.kind==='team'?(r.teamA+'모둠 vs '+(r.teamB?r.teamB+'모둠':'?모둠')+' 팀전'):'온라인 1:1 대결'):'아이온 상자 경기장',450,120);
+  g.fillText(r?(r.kind==='team'?'파랑 팀 vs 빨강 팀':'온라인 1:1 대결'):'아이온 상자 경기장',450,120);
   SUMO.p.forEach(p=>{ if(p.out) return; drawRobot(g,p.x,p.y,p.h,{ring:p.col,led:p.col,blink:false}); });
   SUMO.p.forEach(p=>{
     if(p.out) return; const mine=!!n&&p.id===sid(); const txt=(mine?'나 ':'')+p.label; if(!txt) return;
@@ -815,7 +818,7 @@ sumoInit();
 /* ── 씨름 온라인 대기실과 방 ── */
 function sumoPanels(){ const inRoom=!!SUMO.net; $('#sumoLobby').hidden=inRoom; $('#sumoRoom').hidden=!inRoom; renderLobby(); renderRoom(); }
 const roomRef=id=>fref('sumo/rooms/'+id);
-function sumoCanJoin(r){ const pl=r.players||{}; if(pl[sid()]) return true; const arr=Object.values(pl); if(r.kind!=='team') return arr.length<2; const ca=arr.filter(p=>+p.side===0).length, cb=arr.filter(p=>+p.side===1).length; if(me.team===r.teamA) return ca<4; if(!r.teamB||r.teamB===me.team) return cb<4; return false; }
+function sumoCanJoin(r){ const pl=r.players||{}; if(pl[sid()]) return true; const arr=Object.values(pl); if(r.kind!=='team') return arr.length<2; const ca=arr.filter(p=>+p.side===0).length, cb=arr.filter(p=>+p.side===1).length; return ca<4||cb<4; }
 function renderLobby(){
   if(mode!=='sumo'||SUMO.net) return;
   const ok=FB.ok&&FB.joined; $('#mk1v1').disabled=!ok; $('#mkTeam').disabled=!ok;
@@ -824,10 +827,9 @@ function renderLobby(){
   const rooms=Object.entries(SUMO.rooms||{}).map(([id,r])=>Object.assign({id:id},r)).filter(r=>r&&r.players&&!(r.created&&now-r.created>3*3600000)).sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,20);
   $('#roomList').innerHTML=rooms.length?rooms.map(r=>{
     const pl=Object.values(r.players||{}), ca=pl.filter(p=>+p.side===0).length, cb=pl.filter(p=>+p.side===1).length;
-    const title=r.kind==='team'?(r.teamA+'모둠 vs '+(r.teamB?r.teamB+'모둠':'?모둠')+' 팀전 (4 대 4)'):(r.hostNum+'번의 1:1 방');
+    const title=r.kind==='team'?(r.hostNum+'번의 팀전 방 (최대 4 대 4)'):(r.hostNum+'번의 1:1 방');
     const playing=r.state==='count'||r.state==='play', can=ok&&!playing&&sumoCanJoin(r);
     let sub=playing?'경기 중이에요':(r.kind==='team'?('파랑 '+ca+'/4명 : 빨강 '+cb+'/4명'+(ca>=4&&cb>=4?', 자리가 꽉 찼어요':'')):(pl.length>=2?'자리가 꽉 찼어요':'상대를 기다려요'));
-    if(ok&&!playing&&!can&&r.kind==='team') sub+=', 우리 모둠은 들어갈 수 없어요';
     return '<div class="ritem"><div><b>'+escH(title)+'</b><div class="sub">'+escH(sub)+'</div></div><button class="btn'+(can?' go':'')+'" data-room="'+escH(r.id)+'" type="button"'+(can?'':' disabled')+'>들어가기</button></div>';
   }).join(''):'<div class="hint" style="margin:0">아직 만든 방이 없어요. 먼저 방을 만들어 볼까요?</div>';
   $$('#roomList button[data-room]').forEach(b=>b.onclick=()=>sumoJoin(b.dataset.room));
@@ -853,9 +855,7 @@ function sumoJoin(id){
     r.players=r.players||{}; const arr=Object.values(r.players); let side;
     if(r.kind!=='team'){ if(arr.length>=2) return; side=1; }
     else { const ca=arr.filter(p=>+p.side===0).length, cb=arr.filter(p=>+p.side===1).length;
-      if(me.team===r.teamA){ if(ca>=4) return; side=0; }
-      else if(!r.teamB||r.teamB===me.team){ if(cb>=4) return; side=1; r.teamB=me.team; }
-      else return; }
+      if(ca>=4&&cb>=4) return; side=(cb<=ca&&cb<4)?1:(ca<4?0:1); }
     r.players[my]={side:side,team:me.team,num:me.num}; return r;
   },(err,committed,snap)=>{
     const v=snap&&snap.val();
@@ -863,6 +863,9 @@ function sumoJoin(id){
     else toast('그 방에는 들어갈 수 없어요. 다른 방을 골라요.');
   },false);
 }
+function sumoMove(s){ const n=SUMO.net; if(!n) return; const my=sid(); ac();
+  roomRef(n.id).transaction(r=>{ if(!r||!r.players||!r.players[my]) return; if(r.kind!=='team'||r.state==='count'||r.state==='play') return; const cnt=Object.entries(r.players).filter(([k,p])=>k!==my&&+p.side===s).length; if(cnt>=4) return; r.players[my].side=s; return r; },
+  (err,committed)=>{ if(!committed) toast('지금은 그 편으로 옮길 수 없어요.'); },false); }
 function sumoOffNet(){ if(SUMO.net&&SUMO.net.refs) SUMO.net.refs.forEach(r=>{ try{ r.off(); }catch(e){} }); }
 function sumoEnter(id,host){
   sumoOffNet(); SUMO.net={id:id,host:host,room:null,lastRound:0,lastEnd:0,lastIn:'',refs:[]}; SUMO.inputs={}; SUMO.on=false; SUMO.ended=false; SUMO.p=[]; SUMO.lastPub='';
@@ -897,7 +900,6 @@ function sumoOnRoom(s){
   else if(r.state==='end'){ SUMO.on=false; SUMO.ended=true; if(r.endT&&r.endT!==n.lastEnd){ n.lastEnd=r.endT; sumoShowEnd(r); } }
   if(n.host){
     if(r.state==='play'){ SUMO.p.forEach(p=>{ if(!r.players[p.id]) p.out=true; }); sumoCheckAlive(); }
-    if(r.kind==='team'&&r.teamB&&r.state!=='play'&&r.state!=='count'&&!Object.values(r.players).some(p=>+p.side===1)) roomRef(n.id).child('teamB').set(0).catch(()=>{});
     sumoPublish(true);
   }
   renderRoom();
@@ -932,7 +934,7 @@ function sumoHostEnd(win){
 function sumoShowEnd(r){
   const w=r.winner, mine=r.players[sid()], my=mine?+mine.side:-2; let msg;
   if(w==null||w<0) msg='비겼어요!';
-  else { const nm=r.kind==='team'?((w===0?r.teamA:r.teamB)+'모둠'):SIDE_NAME[w]; msg='<span style="color:'+(w===0?'#9cc3ff':'#ffb1aa')+'">'+nm+'</span> 승리!'+(my===w?'<br><span style="font-size:28px">우리가 이겼어요!</span>':''); }
+  else { const nm=r.kind==='team'?(SIDE_NAME[w]+' 팀'):SIDE_NAME[w]; msg='<span style="color:'+(w===0?'#9cc3ff':'#ffb1aa')+'">'+nm+'</span> 승리!'+(my===w?'<br><span style="font-size:28px">우리가 이겼어요!</span>':''); }
   if(my===w) okTone(); else tone(392,0.3,'triangle',0.06);
   big(msg,3000);
 }
@@ -945,14 +947,16 @@ $('#roomStart').onclick=()=>{
 function renderRoom(){
   const n=SUMO.net; if(!n||!n.room) return; const r=n.room;
   const pl=Object.entries(r.players||{}).map(([id,v])=>Object.assign({id:id},v)).sort((a,b)=>a.num-b.num);
-  $('#roomTitle').textContent=r.kind==='team'?('모둠 팀전 (최대 4 대 4): '+r.teamA+'모둠 vs '+(r.teamB?r.teamB+'모둠':'?모둠')):('1:1 대결 ('+r.hostNum+'번의 방)');
+  $('#roomTitle').textContent=r.kind==='team'?('팀전 (최대 4 대 4): '+r.hostNum+'번의 방'):('1:1 대결 ('+r.hostNum+'번의 방)');
   const cap=r.kind==='team'?4:1;
-  [0,1].forEach(s=>{ const L=pl.filter(p=>+p.side===s); let h=L.map(p=>'<div class="pl'+(p.id===sid()?' me':'')+'"><span>'+escH(p.num)+'번'+(p.id===r.host?' (방장)':'')+(p.id===sid()?' 나':'')+'</span></div>').join(''); for(let k=L.length;k<cap;k++) h+='<div class="pl empty">빈자리</div>'; $('#side'+s).innerHTML=h; $('#sideN'+s).textContent=r.kind==='team'?(L.length+'/4'):''; });
-  $('#sideT0').textContent=r.kind==='team'?(r.teamA+'모둠'):''; $('#sideT1').textContent=r.kind==='team'&&r.teamB?(r.teamB+'모둠'):'';
+  const mine0=r.players[sid()], canMove=r.kind==='team'&&mine0&&r.state!=='count'&&r.state!=='play';
+  [0,1].forEach(s=>{ const L=pl.filter(p=>+p.side===s); let h=L.map(p=>'<div class="pl'+(p.id===sid()?' me':'')+'"><span>'+escH(p.num)+'번'+(r.kind==='team'&&p.team?' <small>('+escH(p.team)+'모둠)</small>':'')+(p.id===r.host?' (방장)':'')+(p.id===sid()?' 나':'')+'</span></div>').join(''); for(let k=L.length;k<cap;k++) h+='<div class="pl empty">빈자리</div>'; if(canMove&&+mine0.side!==s&&L.length<4) h+='<button class="mvbtn" type="button" data-mv="'+s+'">'+SIDE_NAME[s]+' 팀으로 옮기기</button>'; $('#side'+s).innerHTML=h; $('#sideN'+s).textContent=r.kind==='team'?(L.length+'/4'):''; });
+  $$('#sumoRoom [data-mv]').forEach(b=>b.onclick=()=>sumoMove(+b.dataset.mv));
+  $('#sideT0').textContent=r.kind==='team'?'팀':''; $('#sideT1').textContent=r.kind==='team'?'팀':'';
   $('#rs1').textContent=(r.score&&r.score.a)||0; $('#rs2').textContent=(r.score&&r.score.b)||0;
   const both=pl.some(p=>+p.side===0)&&pl.some(p=>+p.side===1), st=r.state;
   $('#roomStart').hidden=!n.host; $('#roomStart').disabled=!both||st==='count'||st==='play'; $('#roomStart').textContent=st==='end'?'▶ 한 판 더':'▶ 경기 시작';
-  $('#roomMsg').textContent=st==='play'?'경기 중! 상대를 경기장 밖으로 밀어내요.':(st==='count'?'곧 시작해요!':(!both?(r.kind==='team'?'다른 모둠 친구가 들어오기를 기다려요. 같은 모둠 친구도 4명까지 들어올 수 있어요.':'상대가 들어오기를 기다려요.'):(n.host?'준비되면 [경기 시작]을 눌러요.':'방장이 경기를 시작하기를 기다려요.')));
+  $('#roomMsg').textContent=st==='play'?'경기 중! 상대를 경기장 밖으로 밀어내요.':(st==='count'?'곧 시작해요!':(!both?(r.kind==='team'?'양쪽 편에 친구가 있어야 시작해요. 아래 버튼으로 편을 옮길 수 있어요.':'상대가 들어오기를 기다려요.'):(n.host?'준비되면 [경기 시작]을 눌러요.'+(r.kind==='team'?' 편은 시작 전까지 옮길 수 있어요.':''):'방장이 경기를 시작하기를 기다려요.'+(r.kind==='team'?' 편은 시작 전까지 옮길 수 있어요.':''))));
   const ms=r.players[sid()]?(+r.players[sid()].side||0):0; $('#myColor').textContent='내 아이온: '+SIDE_NAME[ms]; $('#myColor').style.color=SIDE_COL[ms];
 }
 $$('#dpad button').forEach(b=>{ const k=b.dataset.k; const on=e=>{ e.preventDefault(); ac(); SUMO.pad[k]=true; b.classList.add('on'); try{ b.setPointerCapture(e.pointerId); }catch(err){} }; const off=()=>{ SUMO.pad[k]=false; b.classList.remove('on'); }; b.addEventListener('pointerdown',on); ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,off)); b.addEventListener('contextmenu',e=>e.preventDefault()); });
@@ -1192,7 +1196,7 @@ function showNotice(txt){ $('#noticeTxt').textContent=txt; $('#noticeBar').hidde
 $('#noticeX').onclick=()=>{ $('#noticeBar').hidden=true; };
 function codeSummary(){
   if(mode==='card') return card.seq.length?('카드: '+card.seq.map(c=>CARD_INFO[c].t).join(', ')):'';
-  if(mode==='sumo'){ const n=SUMO.net; if(!n||!n.room) return '씨름: 대기실'; const r=n.room; return '씨름 '+(r.kind==='team'?('팀전 '+r.teamA+'모둠 vs '+(r.teamB||'?')+'모둠'):'1:1')+' '+({wait:'기다리는 중',count:'시작 준비',play:'경기 중',end:'경기 끝'}[r.state]||'')+' (파랑 '+((r.score&&r.score.a)||0)+' : '+((r.score&&r.score.b)||0)+' 빨강)'+(n.host?', 방장':''); }
+  if(mode==='sumo'){ const n=SUMO.net; if(!n||!n.room) return '씨름: 대기실'; const r=n.room; return '씨름 '+(r.kind==='team'?'팀전':'1:1')+' '+({wait:'기다리는 중',count:'시작 준비',play:'경기 중',end:'경기 끝'}[r.state]||'')+' (파랑 '+((r.score&&r.score.a)||0)+' : '+((r.score&&r.score.b)||0)+' 빨강)'+(n.host?', 방장':''); }
   if(mode!=='block'||!ws) return '';
   try{
     const out=[];
