@@ -73,14 +73,16 @@ td:first-child{white-space:nowrap;font-weight:700}
       <div class="row"><input type="text" id="lockMsg" value="선생님을 봐 주세요." maxlength="60" aria-label="잠금 화면에 보일 말"></div>
       <div class="row"><button class="btn navy" id="stopBtn" type="button">모두 멈추기</button><span class="hint">실행 중인 코드와 아이온을 멈춰요.</span></div>
       <h2 style="margin-top:16px">알림 보내기</h2>
-      <div class="row"><input type="text" id="noticeIn" placeholder="예: 이제 약국 찾아가기 미션을 해요!" maxlength="80" aria-label="알림 내용"><button class="btn go" id="noticeBtn" type="button">보내기</button></div>
+      <div class="row"><input type="text" id="noticeIn" placeholder="예: 이제 무궁화 꽃 놀이를 해요!" maxlength="80" aria-label="알림 내용"><button class="btn go" id="noticeBtn" type="button">보내기</button></div>
       <h2 style="margin-top:16px">학생에게 보일 활동</h2>
-      <div class="tg" id="tabsTg"><button type="button" data-m="block">블록 코딩</button><button type="button" data-m="card">카드 길 찾기</button><button type="button" data-m="joy">조이스틱 운전</button><button type="button" data-m="sumo">자리 뺏기 씨름</button></div>
+      <div class="tg" id="tabsTg"><button type="button" data-m="block">블록 코딩 (① 거리 순찰, ③ 무궁화 꽃)</button><button type="button" data-m="sumo">② 자리 뺏기 씨름</button></div>
       <p class="hint">초록색 활동만 학생 화면에 보여요. 눌러서 켜고 꺼요.</p>
       <h2 style="margin-top:16px">모두 같은 화면으로</h2>
-      <div class="row"><select id="goSel" aria-label="보낼 활동"><option value="block">블록 코딩</option><option value="card">카드 길 찾기</option><option value="joy">조이스틱 운전</option><option value="sumo">자리 뺏기 씨름</option></select><button class="btn" id="goBtn" type="button">이 활동으로 보내기</button></div>
+      <div class="row"><button class="btn navy" id="step1" type="button">① 5차시 거리 순찰</button><button class="btn navy" id="step2" type="button">② 5차시 자리 뺏기 씨름</button><button class="btn navy" id="step3" type="button">③ 6차시 무궁화 꽃</button></div>
+      <p class="hint">누르면 모든 학생 화면이 그 활동과 지도로 바뀌어요. 학생 화면 위쪽의 ① ② ③과 같아요.</p>
+      <div style="display:none"><div class="row"><select id="goSel" aria-label="보낼 활동"><option value="block">블록 코딩</option><option value="card">카드 길 찾기</option><option value="joy">조이스틱 운전</option><option value="sumo">자리 뺏기 씨름</option></select><button class="btn" id="goBtn" type="button">이 활동으로 보내기</button></div>
       <div class="row"><select id="mapSel" aria-label="바꿀 지도"><option value="mat3">놀이 자료 3 (할머니 댁)</option><option value="mat2">놀이 자료 2 (길 찾기, 약국)</option><option value="mat4">놀이 자료 4 (도로 운전)</option><option value="ex">소리풍경지도 (예시)</option><option value="a3">소리풍경지도 (A3 빈 지도)</option><option value="paper">흰 종이 (그림 그리기)</option><option value="mugung">무궁화 꽃 놀이 (손 인식)</option></select><button class="btn" id="mapBtn" type="button">이 지도로 바꾸기</button></div>
-      <p class="hint">지도 바꾸기는 블록 코딩과 조이스틱 화면에 적용돼요.</p>
+      <p class="hint">지도 바꾸기는 블록 코딩과 조이스틱 화면에 적용돼요.</p></div>
       <h2 style="margin-top:16px">정리</h2>
       <div class="row"><button class="btn" id="resetBtn" type="button">성공 기록과 화면 지우기</button></div>
       <p class="hint">학생 주소: <b id="stuUrl"></b></p>
@@ -159,6 +161,8 @@ $('#noticeIn').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#noticeBtn
 $$('#tabsTg button').forEach(b=>b.onclick=()=>{ if(!db) return; const t=tabsNow(); t[b.dataset.m]=!t[b.dataset.m]; if(!Object.values(t).some(Boolean)) return; ref('control/tabs').set(t); });
 $('#goBtn').onclick=()=>{ if(!db) return; const m=$('#goSel').value; const t=tabsNow(); if(!t[m]){ t[m]=true; ref('control/tabs').set(t); } ref('control/go').set({mode:m,t:Date.now()}); };
 $('#mapBtn').onclick=()=>{ if(db) ref('control/map').set({key:$('#mapSel').value,t:Date.now()}); };
+function goStep(m,map){ if(!db) return; const t=tabsNow(); if(!t[m]){ t[m]=true; ref('control/tabs').set(t); } ref('control/go').set({mode:m,t:Date.now()}); if(map) setTimeout(()=>ref('control/map').set({key:map,t:Date.now()}),400); }
+$('#step1').onclick=()=>goStep('block','mat4'); $('#step2').onclick=()=>goStep('sumo'); $('#step3').onclick=()=>goStep('block','mugung');
 let armT=null;
 $('#resetBtn').onclick=()=>{ const b=$('#resetBtn'); if(!b.classList.contains('armed')){ b.classList.add('armed'); b.textContent='한 번 더 누르면 지워요'; armT=setTimeout(()=>{ b.classList.remove('armed'); b.textContent='성공 기록과 화면 지우기'; },4000); return; } clearTimeout(armT); b.classList.remove('armed'); b.textContent='성공 기록과 화면 지우기'; if(!db) return; ['clear','feed','snap','snapReq','mg'].forEach(p=>ref(p).remove()); Object.entries(D.students).forEach(([k,s])=>{ if(!s.online) ref('students/'+k).remove(); }); };
 function rows(){ const keys=new Set([...Object.keys(D.students),...Object.keys(D.clear)]); return [...keys].map(k=>{ const s=D.students[k]||{}; const m=k.match(/^t(\d+)n(\d+)$/)||[0,0,0]; return {k:k,team:s.team||+m[1],num:s.num||+m[2],on:!!s.online,mode:s.mode,map:s.map,run:s.run,code:s.code,cl:D.clear[k]||{}}; }).filter(r=>r.team&&r.num).sort((a,b)=>(b.on-a.on)||(a.team-b.team)||(a.num-b.num)); }

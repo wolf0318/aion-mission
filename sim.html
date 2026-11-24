@@ -18,6 +18,10 @@ header .note{margin-left:auto;font-size:13px;opacity:.85}
 .tabs{display:flex;gap:6px;flex-wrap:wrap}
 .tab{border:0;border-radius:999px;padding:8px 16px;font-size:16px;font-weight:700;background:rgba(255,255,255,.14);color:#fff;cursor:pointer}
 .tab.on{background:#fff;color:var(--navy)}
+.tab.step{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;padding:5px 16px 6px}
+.tab.step small{font-size:12px;font-weight:700;opacity:.8}
+.tab.step b{font-size:16px;white-space:nowrap}
+.lhide{display:none!important}
 main{flex:1;min-height:0;display:flex;gap:10px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
 #left{flex:1.1}
@@ -316,6 +320,7 @@ h2{font-size:19px;margin:4px 0 10px;color:var(--navy)}
 <script src="sim-assets.js"></script>
 <script>
 'use strict';
+const LESSON=!/[?&]all=1(&|$)/.test(location.search); /* 기본은 5, 6차시 수업용 화면. 주소 끝에 ?all=1 을 붙이면 지난 기능까지 모두 */
 /* ───────── 그림 ───────── */
 const IMG_SRC=window.SIM_IMG||{mat2:'',mat3:'',mat4:'',a3:'',ex:'',robot:''};
 const IMGS={};
@@ -333,6 +338,7 @@ const MAPS={
   mugung:{name:'무궁화 꽃 놀이 (손 인식)',img:null,w:1500,h:700,cm:120,start:{x:110,y:350,h:0}},
   sumo:{name:'씨름 경기장',img:null,w:900,h:900,cm:36,start:{x:450,y:450,h:0},hidden:true}
 };
+if(LESSON) ['mat2','mat3','ex','a3','paper','mine'].forEach(k=>{ if(MAPS[k]) MAPS[k].hidden=true; });
 /* 놀이 자료 2 격자: 세로 길 x, 가로 길 y */
 const G2={xs:[176,464,751,1038,1326],ys:[214,500,788],cell:287};
 const PLACES={
@@ -368,7 +374,7 @@ const sleepRaw=ms=>new Promise(r=>setTimeout(r,ms));
 const ROBOT_L=10.4, ROBOT_W=11.5;            // cm
 const V100=15.4, S100=72;                     // 100%일 때 앞으로 cm/초, 제자리 회전 도/초
 const PEN_OFF={a:-2,b:-7.5};                // 펜 위치(앞뒤, 좌우) cm
-let curMap='mat3';
+let curMap=LESSON?'mat4':'mat3';
 function M(){ return MAPS[curMap]; }
 function pxcm(){ const m=M(); return m.w/m.cm; }
 const R={x:110,y:488,h:0,v:0,w:0,led:null,blink:false,on:true};
@@ -562,6 +568,11 @@ const TOOLBOX={kind:'categoryToolbox',contents:[
   {kind:'category',name:'소리',colour:'#4a9d3a',contents:[{kind:'block',type:'piano'},{kind:'block',type:'buzz'}]},
   {kind:'category',name:'펜',colour:'#c0392b',contents:[{kind:'block',type:'pen_set'}]}
 ]};
+if(LESSON){ const C=n=>TOOLBOX.contents.find(c=>c.name===n);
+  C('길 따라가기').contents[0]={kind:'label',text:'5차시: 놀이 자료 4 도로에서 써요'};
+  C('AI 손 인식').contents.unshift({kind:'label',text:'6차시: 태블릿 카메라로 손 모양 알아보기'});
+  C('소리').contents=[{kind:'label',text:'1 도, 2 레, 3 미, 4 파, 5 솔, 6 라, 7 시, 8 높은 도'},{kind:'block',type:'piano'}];
+  TOOLBOX.contents=['시작','길 따라가기','반복','LED','로봇','AI 손 인식','소리'].map(C); }
 function blk(type,fields,next,inner){ const o={type:type}; if(fields) o.fields=fields; if(inner) o.inputs={DO:{block:inner}}; if(next) o.next={block:next}; return o; }
 function chain(arr){ let n=null; for(let i=arr.length-1;i>=0;i--){ const a=arr[i]; n=blk(a[0],a[1],n,a[2]); } return n; }
 const EXAMPLES={
@@ -580,10 +591,10 @@ function initBlockly(){
     defineBlocks();
     const theme=Blockly.Theme.defineTheme('aionTheme',{base:Blockly.Themes.Classic,blockStyles:{aion_hat:{colourPrimary:'#22a845',colourSecondary:'#1d8f3b',colourTertiary:'#18772f',hat:'cap'}},fontStyle:{family:'Malgun Gothic, 맑은 고딕, Noto Sans KR, sans-serif',weight:'bold',size:12},componentStyles:{workspaceBackgroundColour:'#eef1f8',toolboxBackgroundColour:'#ffffff',toolboxForegroundColour:'#1d2733',flyoutBackgroundColour:'#f4f6fb',flyoutOpacity:1,scrollbarColour:'#c6cfdd'}});
     ws=Blockly.inject('blockly',{media:'https://cdn.jsdelivr.net/npm/blockly@10.4.3/media/',toolbox:TOOLBOX,renderer:'zelos',theme:theme,trashcan:true,zoom:{controls:true,wheel:true,startScale:0.85,maxScale:2,minScale:0.4},move:{scrollbars:true,drag:true,wheel:false},grid:{spacing:24,length:2,colour:'#dde3ee',snap:false}});
-    let saved=null; try{ saved=JSON.parse(localStorage.getItem('aionSimBlocks')||'null'); }catch(e){}
+    let saved=null; try{ saved=JSON.parse(localStorage.getItem(LESSON?'aionSimBlocks56':'aionSimBlocks')||'null'); }catch(e){}
     if(saved){ try{ Blockly.serialization.workspaces.load(saved,ws); }catch(e){ saved=null; } }
     if(!saved || !ws.getAllBlocks(false).length) loadTop(blk('aion_start'));
-    ws.addChangeListener(e=>{ if(e.isUiEvent) return; try{ localStorage.setItem('aionSimBlocks',JSON.stringify(Blockly.serialization.workspaces.save(ws))); }catch(err){} });
+    ws.addChangeListener(e=>{ if(e.isUiEvent) return; try{ localStorage.setItem(LESSON?'aionSimBlocks56':'aionSimBlocks',JSON.stringify(Blockly.serialization.workspaces.save(ws))); }catch(err){} });
     window.addEventListener('resize',()=>Blockly.svgResize(ws));
   }catch(e){ console.error(e); $('#blockly').style.display='none'; $('#blockFail').style.display='block'; }
 }
@@ -946,7 +957,7 @@ window.addEventListener('blur',()=>{ joy.keys={}; });
 /* ───────── 지도 고르기, 지도 도구 ───────── */
 function fillMapSel(){ const s=$('#mapSel'); s.innerHTML=Object.entries(MAPS).filter(([k,m])=>!m.hidden).map(([k,m])=>'<option value="'+k+'">'+m.name+'</option>').join(''); s.value=curMap; }
 const MAT2_HOME={x:176,y:788,h:0};
-function chooseMap(k,keepMission){ if(k==='mat2'&&mode!=='card') MAPS.mat2.start={...MAT2_HOME}; curMap=k; $('#mapSel').value=MAPS[k].hidden?'':k; $('#upLbl').style.display=k==='mine'?'':'none'; placeHome(); if(!keepMission){ if(mode==='block') blockMission(); else if(mode==='joy') joyReset(); } }
+function chooseMap(k,keepMission){ if(k==='mat2'&&mode!=='card') MAPS.mat2.start={...MAT2_HOME}; curMap=k; $('#mapSel').value=MAPS[k].hidden?'':k; $('#upLbl').style.display=k==='mine'?'':'none'; placeHome(); if(!keepMission){ if(mode==='block') blockMission(); else if(mode==='joy') joyReset(); } syncSteps(); }
 $('#mapSel').onchange=e=>{ if(mode==='card'){ e.target.value='mat2'; toast('카드 길 찾기는 놀이 자료 2에서 해요.'); return; } stopProgram(true); chooseMap(e.target.value); };
 $('#homeBtn').onclick=()=>{ if(mode==='sumo'){ if(SUMO.net){ toast('온라인 대전에서는 방장이 경기를 시작하면 제자리로 돌아가요.'); return; } sumoInit(); SUMO.on=false; return; } if(RUN||card.running) return; placeHome(); };
 $('#rotL').onclick=()=>{ if(RUN||card.running) return; R.h-=15; };
@@ -1074,6 +1085,7 @@ function drawMugungTop(g){
 /* ───────── 모드 바꾸기 ───────── */
 let mode='block';
 function setMode(m){
+  if(LESSON&&(m==='card'||m==='joy')) m='block';
   if(m===mode) return;
   if(mode==='sumo'&&SUMO.net) sumoLeave();
   stopProgram(true); if(card.tok) card.tok.stop=true; buzzOff(); joy.keys={}; SUMO.on=false; SUMO.pad={};
@@ -1081,10 +1093,11 @@ function setMode(m){
   const sb=$('#stageBar'); ['#mapSel','#rotL','#rotR','#trailBtn','#penBtn','#drawBtn'].forEach(s=>$(s).style.display=m==='sumo'?'none':'');
   if(drawMode && m==='sumo'){ drawMode=false; $('#drawBtn').classList.remove('on'); $('#drawTools').classList.remove('on'); }
   R.led=null; R.blink=false; HAND.on=false; HAND.man=null; $('#handBox').hidden=true; $('#handMan').hidden=true;
-  if(m==='block'){ chooseMap(curMap==='sumo'?'mat3':(curMap||'mat3')); blockMission(); setTimeout(()=>{ try{ Blockly.svgResize(ws); }catch(e){} },30); }
+  if(m==='block'){ chooseMap((!curMap||curMap==='sumo'||!MAPS[curMap]||MAPS[curMap].hidden)?(LESSON?'mat4':'mat3'):curMap); blockMission(); setTimeout(()=>{ try{ Blockly.svgResize(ws); }catch(e){} },30); }
   if(m==='card'){ cardSetup(); readyUI(); renderSeq(); }
   if(m==='joy'){ $$('#ledSeg button').forEach(x=>x.classList.toggle('on',x.dataset.v==='off')); chooseMap('mat4'); joyReset(); }
   if(m==='sumo'){ curMap='sumo'; setMission(null); sumoInit(); $('#upLbl').style.display='none'; sumoPanels(); }
+  syncSteps();
 }
 $$('.tab').forEach(t=>t.onclick=()=>setMode(t.dataset.m));
 
@@ -1156,7 +1169,7 @@ function applyControl(c){
   ctl=c||{};
   const tabs=Object.assign({block:true,card:true,joy:true,sumo:true},ctl.tabs||{});
   $$('.tab').forEach(x=>x.hidden=!tabs[x.dataset.m]);
-  if(!tabs[mode]){ const f=['block','card','joy','sumo'].find(m=>tabs[m]); if(f) setMode(f); }
+  if(!tabs[mode]){ const f=(LESSON?['block','sumo']:['block','card','joy','sumo']).find(m=>tabs[m]); if(f) setMode(f); }
   const fresh=t=>!ctlFirst||(Date.now()-t<15*60000);
   if(ctl.go&&ctl.go.t!==ctlSeen.go){ ctlSeen.go=ctl.go.t; if(fresh(ctl.go.t)&&tabs[ctl.go.mode]&&ctl.go.mode!==mode) setMode(ctl.go.mode); }
   if(ctl.map&&ctl.map.t!==ctlSeen.map){ ctlSeen.map=ctl.map.t; if(fresh(ctl.map.t)&&(mode==='block'||mode==='joy')&&MAPS[ctl.map.key]&&!MAPS[ctl.map.key].hidden){ stopProgram(true); chooseMap(ctl.map.key); } }
@@ -1183,8 +1196,22 @@ function codeSummary(){
 setInterval(()=>{ if(!FB.ok||!FB.joined) return; const st={mode:mode,map:curMap,run:!!(RUN||card.running||(mode==='sumo'&&SUMO.on)),code:codeSummary()}; const j=JSON.stringify(st); if(j===lastRep) return; lastRep=j; fbMine(st); },3000);
 function sendSnap(){ if(!FB.ok||!FB.joined) return; try{ const W=360, H=Math.max(1,Math.round(W*cv.height/cv.width)); const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').drawImage(cv,0,0,W,H); fref('snap/'+sid()).set({img:c.toDataURL('image/jpeg',0.6),t:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{}); }catch(e){} }
 
+/* ───────── 5, 6차시 수업 화면 ───────── */
+function syncSteps(){ if(!LESSON) return; $$('.tab.step').forEach(t=>t.classList.toggle('on',t.dataset.m===mode&&(mode==='sumo'||t.dataset.map===curMap))); }
+if(LESSON){
+  $('#tabs').innerHTML='<button class="tab step" data-m="block" data-map="mat4" type="button"><small>5차시 ①</small><b>거리 순찰</b></button>'
+    +'<button class="tab step" data-m="sumo" type="button"><small>5차시 ②</small><b>자리 뺏기 씨름</b></button>'
+    +'<button class="tab step" data-m="block" data-map="mugung" type="button"><small>6차시 ③</small><b>무궁화 꽃 (손 인식)</b></button>';
+  $$('.tab.step').forEach(t=>t.onclick=()=>{ if(t.dataset.m==='sumo'){ setMode('sumo'); return; } if(mode!=='block') setMode('block'); if(curMap!==t.dataset.map){ stopProgram(true); chooseMap(t.dataset.map); } syncSteps(); });
+  ['#mapSel','#penBtn','#drawBtn','#drawTools','#upLbl','header .note'].forEach(q=>{ const e=$(q); if(e) e.classList.add('lhide'); });
+  const exs=$('#exSel'); ['mission','pharmacy','circle','patrol'].forEach(v=>{ const o=exs.querySelector('option[value="'+v+'"]'); if(o) o.remove(); });
+  const o4=exs.querySelector('option[value="patrol4"]'); if(o4) o4.textContent='5차시 거리 순찰 예제';
+  const o7=exs.querySelector('option[value="hand"]'); if(o7) o7.textContent='6차시 무궁화 꽃 예제';
+  $('#blockFail').innerHTML='블록 코딩 화면을 불러오지 못했어요. 인터넷 연결을 확인하고 새로 고침(F5)을 눌러 주세요.<br>자리 뺏기 씨름은 그대로 할 수 있어요.';
+}
+
 /* ───────── 시작 ───────── */
-fillMapSel(); chooseMap('mat3'); blockMission(); penBtnText(); renderSeq(); joyScore();
+fillMapSel(); chooseMap(curMap); blockMission(); penBtnText(); renderSeq(); joyScore();
 requestAnimationFrame(render);
 function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
 fbInit();
