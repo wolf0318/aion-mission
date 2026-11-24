@@ -34,9 +34,13 @@ h2{font-size:18px;margin:0 0 10px;color:var(--navy)}
 #sendSt{text-align:center;font-weight:700;font-size:16px;color:var(--muted);min-height:24px}
 #sendSt.ok{color:var(--green)}
 .chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
-.chip{border:2px solid var(--line);border-radius:12px;padding:6px 2px;text-align:center;font-weight:700;font-size:14px;background:#fff}
-.chip .e{font-size:28px;display:block}
+.chip{border:2px solid var(--line);border-radius:14px;padding:10px 2px;text-align:center;font:inherit;font-weight:800;font-size:16px;background:#fff;color:var(--ink);cursor:pointer;touch-action:manipulation}
+.chip .e{font-size:36px;display:block;line-height:1.15}
 .chip.on{border-color:var(--blue);background:#e9eefc;color:var(--blue)}
+.chip.on.t{border-color:#e08a00;background:#fff3d6;color:#a35f00}
+.chip.cam{background:#f2f5f9;color:var(--muted)}
+#touchSt{display:none;text-align:center;font-weight:800;color:#a35f00;margin-top:6px}
+#touchSt.on{display:block}
 #me{font-size:20px;font-weight:800}
 </style>
 </head>
@@ -57,8 +61,9 @@ h2{font-size:18px;margin:0 0 10px;color:var(--navy)}
     <div id="gNow"><span class="e">✋</span>손을 보여 줘요</div>
     <div id="sendSt"></div>
     <div class="hint" id="fing" style="text-align:center;margin-top:4px"></div>
+    <div id="touchSt">지금은 카메라가 본 손 대신 누른 손 모양을 보내요</div>
     <div class="chips" id="chips"></div>
-    <p class="hint">손을 카메라에서 한 뼘 정도 떨어뜨리고, 손 전체가 화면에 들어오게 해요. 밝은 곳에서 잘 알아봐요.</p>
+    <p class="hint">손을 카메라에서 한 뼘 정도 떨어뜨리고, 손 전체가 화면에 들어오게 해요. 밝은 곳에서 잘 알아봐요.<br><b>AI가 잘 못 알아보면 위 손 모양을 직접 눌러요.</b> 다시 카메라로 하려면 [카메라로 알아보기]를 눌러요.</p>
   </section>
 </main>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -108,18 +113,21 @@ window.__classify=classify;
 
 /* ───── 화면 ───── */
 function buildPick(){ const box=$('#pick'); box.textContent=''; for(let i=1;i<=25;i++){ const b=document.createElement('button'); b.type='button'; b.textContent=i; b.setAttribute('aria-pressed',i===num?'true':'false'); b.onclick=()=>setNum(i); box.appendChild(b); } }
-function buildChips(){ $('#chips').innerHTML=GEST.map(g=>'<div class="chip" data-g="'+g[0]+'"><span class="e">'+g[2]+'</span>'+g[1]+'</div>').join(''); }
+let touchMode=false;
+function buildChips(){ $('#chips').innerHTML=GEST.map(g=>'<button type="button" class="chip" data-g="'+g[0]+'"><span class="e">'+g[2]+'</span>'+g[1]+'</button>').join('')+'<button type="button" class="chip cam" id="camBack"><span class="e">📷</span>카메라로 알아보기</button>';
+  document.querySelectorAll('.chip[data-g]').forEach(b=>b.onclick=()=>{ touchMode=true; stable=b.dataset.g; hist=[]; renderNow(); pushNow(); setSendSt(); });
+  $('#camBack').onclick=()=>{ touchMode=false; hist=[]; stable=null; renderNow(); pushNow(); setSendSt(); }; }
 function showMain(){ $('#pickBox').hidden=!!num&&!pickOpen; $('#camBox').hidden=!num; $('#sideBox').hidden=!num; $('#me').textContent=num?(num+'번 컴퓨터의 아이온에게 보내요'):''; }
 let pickOpen=false;
 function setNum(n){ const old=num; num=n; lsx.set('aion_hand_num',n); pickOpen=false; buildPick(); showMain(); if(old&&old!==n&&db){ db.ref(BASE+'/hand/'+old).remove().catch(()=>{}); } bindRef(); sentG=undefined; pushNow(); }
 $('#numBtn').onclick=()=>{ pickOpen=true; showMain(); window.scrollTo(0,0); };
-function renderNow(){ const g=stable; $('#gNow').innerHTML=g?('<span class="e">'+GN[g][2]+'</span>'+GN[g][1]):'<span class="e">🖐</span>손을 보여 줘요'; document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.g===g)); }
-function setSendSt(){ const el=$('#sendSt'); if(!fbOk){ el.className=''; el.textContent='인터넷에 연결되지 않았어요. 새로 고침해 보세요.'; return; } if(!running){ el.className=''; el.textContent='카메라를 켜면 보내기 시작해요.'; return; } el.className='ok'; el.textContent='● '+num+'번 아이온에게 보내는 중'; }
+function renderNow(){ const g=stable; $('#gNow').innerHTML=g?('<span class="e">'+GN[g][2]+'</span>'+GN[g][1]):'<span class="e">🖐</span>손을 보여 줘요'; document.querySelectorAll('.chip[data-g]').forEach(c=>{ c.classList.toggle('on',c.dataset.g===g); c.classList.toggle('t',touchMode&&c.dataset.g===g); }); $('#touchSt').classList.toggle('on',touchMode); $('#camBack').hidden=!touchMode; }
+function setSendSt(){ const el=$('#sendSt'); if(!fbOk){ el.className=''; el.textContent='인터넷에 연결되지 않았어요. 새로 고침해 보세요.'; return; } if(touchMode){ el.className='ok'; el.textContent='● 터치로 '+num+'번 아이온에게 보내는 중'; return; } if(!running){ el.className=''; el.textContent='카메라를 켜거나 아래 손 모양을 눌러요.'; return; } el.className='ok'; el.textContent='● '+num+'번 아이온에게 보내는 중'; }
 
 /* ───── 우리 반 연결 ───── */
 function bindRef(){ if(!db||!num) return; if(myRef){ try{ myRef.onDisconnect().cancel(); }catch(e){} } myRef=db.ref(BASE+'/hand/'+num); myRef.onDisconnect().remove(); }
-function pushNow(){ if(!fbOk||!myRef||!running) return; sentG=stable; sentAt=Date.now(); myRef.set({g:stable||'',t:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{}); }
-setInterval(()=>{ if(running&&Date.now()-sentAt>1500) pushNow(); setSendSt(); },500);
+function pushNow(){ if(!fbOk||!myRef||!(running||touchMode)) return; sentG=stable; sentAt=Date.now(); myRef.set({g:stable||'',t:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{}); }
+setInterval(()=>{ if((running||touchMode)&&Date.now()-sentAt>1500) pushNow(); setSendSt(); },500);
 (async()=>{
   try{ firebase.initializeApp(FB_CONFIG); await firebase.auth().signInAnonymously(); db=firebase.database(); fbOk=true;
     db.ref('.info/connected').on('value',s=>{ const on=s.val()===true; $('#net').className='net '+(on?'on':'off'); $('#net').querySelector('span').textContent=on?'우리 반과 연결됨':'다시 연결하는 중'; });
@@ -178,6 +186,7 @@ function onResults(r){
   feed(raw);
 }
 function feed(raw){
+  if(touchMode) return;
   hist.push(raw||'none'); if(hist.length>5) hist.shift();
   const cnt={}; hist.forEach(x=>cnt[x]=(cnt[x]||0)+1);
   const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
